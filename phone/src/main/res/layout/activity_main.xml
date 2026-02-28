@@ -1,0 +1,569 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#121212"
+    android:fillViewport="true"
+    android:clipToPadding="false">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingHorizontal="16dp"
+        android:paddingTop="20dp"
+        android:paddingBottom="32dp">
+
+        <!-- ═══════════════════════════════════════════════════════════════ -->
+        <!-- HEADER                                                         -->
+        <!-- ═══════════════════════════════════════════════════════════════ -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="6dp">
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Rokid HUD"
+                    android:textColor="#FFFFFF"
+                    android:textSize="26sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Maps &amp; Navigation"
+                    android:textColor="#00E676"
+                    android:textSize="14sp"
+                    android:layout_marginTop="-2dp" />
+            </LinearLayout>
+
+            <Button
+                android:id="@+id/btnStart"
+                android:layout_width="wrap_content"
+                android:layout_height="44dp"
+                android:minWidth="130dp"
+                android:text="Start Streaming"
+                android:backgroundTint="#00E676"
+                android:textColor="#000000"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                android:insetTop="0dp"
+                android:insetBottom="0dp" />
+        </LinearLayout>
+
+        <!-- Glasses connection status bar -->
+        <LinearLayout
+            android:id="@+id/glassesStatusBar"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:background="@drawable/bg_card"
+            android:paddingHorizontal="14dp"
+            android:paddingVertical="10dp"
+            android:layout_marginBottom="16dp">
+
+            <View
+                android:id="@+id/glassesStatusDot"
+                android:layout_width="10dp"
+                android:layout_height="10dp"
+                android:background="@drawable/bg_status_dot_disconnected"
+                android:layout_marginEnd="10dp" />
+
+            <TextView
+                android:id="@+id/glassesStatusText"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Glasses not connected"
+                android:textColor="#9E9E9E"
+                android:textSize="13sp" />
+
+            <Button
+                android:id="@+id/btnScanGlasses"
+                android:layout_width="wrap_content"
+                android:layout_height="34dp"
+                android:minWidth="0dp"
+                android:text="Pair Glasses"
+                android:backgroundTint="#2A2A2A"
+                android:textColor="#00E676"
+                android:textSize="12sp"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:paddingHorizontal="16dp" />
+        </LinearLayout>
+
+        <!-- ═══════════════════════════════════════════════════════════════ -->
+        <!-- SEARCH & NAVIGATE                                              -->
+        <!-- ═══════════════════════════════════════════════════════════════ -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@drawable/bg_card"
+            android:padding="16dp"
+            android:layout_marginBottom="12dp">
+
+            <TextView
+                style="@style/SectionTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="NAVIGATE" />
+
+            <!-- Search bar -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:orientation="horizontal"
+                android:background="@drawable/bg_search"
+                android:gravity="center_vertical"
+                android:paddingStart="16dp"
+                android:paddingEnd="4dp"
+                android:layout_marginBottom="10dp">
+
+                <EditText
+                    android:id="@+id/searchInput"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    android:hint="Search for a place..."
+                    android:textColor="#E0E0E0"
+                    android:textColorHint="#616161"
+                    android:textSize="15sp"
+                    android:background="@null"
+                    android:imeOptions="actionSearch"
+                    android:inputType="text"
+                    android:singleLine="true" />
+
+                <ImageButton
+                    android:id="@+id/btnSearch"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:src="@android:drawable/ic_menu_search"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="Search"
+                    android:tint="#00E676" />
+            </LinearLayout>
+
+            <!-- Saved places toggle -->
+            <Button
+                android:id="@+id/btnShowSaved"
+                android:layout_width="match_parent"
+                android:layout_height="40dp"
+                android:text="Saved Places"
+                android:drawableStart="@android:drawable/btn_star_big_on"
+                android:drawableTint="#FFD600"
+                android:backgroundTint="#252525"
+                android:textColor="#BDBDBD"
+                android:textSize="13sp"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:gravity="center"
+                android:paddingStart="12dp"
+                android:layout_marginBottom="4dp" />
+
+            <!-- Search results / saved places list -->
+            <ListView
+                android:id="@+id/searchResults"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:background="#181818"
+                android:divider="#2A2A2A"
+                android:dividerHeight="1dp"
+                android:visibility="gone"
+                android:nestedScrollingEnabled="true" />
+
+            <!-- Route card (shown after selecting a result) -->
+            <LinearLayout
+                android:id="@+id/routeCard"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="@drawable/bg_card_accent"
+                android:padding="14dp"
+                android:layout_marginTop="10dp"
+                android:visibility="gone">
+
+                <TextView
+                    android:id="@+id/routeDestText"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:textColor="#FFFFFF"
+                    android:textSize="15sp"
+                    android:textStyle="bold"
+                    android:maxLines="2"
+                    android:ellipsize="end" />
+
+                <TextView
+                    android:id="@+id/routeInfoText"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:textColor="#81C784"
+                    android:textSize="13sp"
+                    android:layout_marginTop="4dp" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:layout_marginTop="12dp">
+
+                    <Button
+                        android:id="@+id/btnNavigate"
+                        android:layout_width="0dp"
+                        android:layout_height="44dp"
+                        android:layout_weight="3"
+                        android:text="Start Navigation"
+                        android:backgroundTint="#00E676"
+                        android:textColor="#000000"
+                        android:textStyle="bold"
+                        android:textSize="14sp"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        android:layout_marginEnd="8dp" />
+
+                    <Button
+                        android:id="@+id/btnSavePlace"
+                        android:layout_width="0dp"
+                        android:layout_height="44dp"
+                        android:layout_weight="2"
+                        android:text="Save"
+                        android:drawableStart="@android:drawable/btn_star_big_on"
+                        android:drawableTint="#FFD600"
+                        android:backgroundTint="#2A2A2A"
+                        android:textColor="#FFD600"
+                        android:textSize="13sp"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp" />
+                </LinearLayout>
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- ═══════════════════════════════════════════════════════════════ -->
+        <!-- LIVE NAVIGATION (shown during active nav)                      -->
+        <!-- ═══════════════════════════════════════════════════════════════ -->
+        <LinearLayout
+            android:id="@+id/navStatus"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@drawable/bg_card_accent"
+            android:padding="16dp"
+            android:layout_marginBottom="12dp"
+            android:visibility="gone">
+
+            <TextView
+                style="@style/SectionTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="LIVE DIRECTIONS"
+                android:textColor="#66BB6A" />
+
+            <TextView
+                android:id="@+id/navInstructionText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textColor="#FFFFFF"
+                android:textSize="22sp"
+                android:textStyle="bold"
+                android:lineSpacingExtra="2dp" />
+
+            <TextView
+                android:id="@+id/navDistanceText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textColor="#A5D6A7"
+                android:textSize="18sp"
+                android:layout_marginTop="4dp" />
+
+            <Button
+                android:id="@+id/btnStopNav"
+                android:layout_width="match_parent"
+                android:layout_height="42dp"
+                android:text="Stop Navigation"
+                android:backgroundTint="#C62828"
+                android:textColor="#FFFFFF"
+                android:textSize="13sp"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:layout_marginTop="12dp" />
+        </LinearLayout>
+
+        <!-- ═══════════════════════════════════════════════════════════════ -->
+        <!-- GLASSES SETTINGS                                               -->
+        <!-- ═══════════════════════════════════════════════════════════════ -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@drawable/bg_card"
+            android:padding="16dp"
+            android:layout_marginBottom="12dp">
+
+            <TextView
+                style="@style/SectionTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="GLASSES SETTINGS" />
+
+            <!-- Voice directions toggle -->
+            <LinearLayout style="@style/ToggleRow">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Voice Directions"
+                        android:textColor="#E0E0E0"
+                        android:textSize="15sp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Read turn-by-turn instructions aloud"
+                        android:textColor="#757575"
+                        android:textSize="12sp"
+                        android:layout_marginTop="2dp" />
+                </LinearLayout>
+
+                <Switch
+                    android:id="@+id/switchTts"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:thumbTint="#00E676"
+                    android:trackTint="#424242" />
+            </LinearLayout>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="#2A2A2A" />
+
+            <!-- Units toggle (Imperial / Metric) -->
+            <LinearLayout style="@style/ToggleRow">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Imperial Units"
+                        android:textColor="#E0E0E0"
+                        android:textSize="15sp" />
+
+                    <TextView
+                        android:id="@+id/unitsDescription"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Show miles &amp; feet instead of km &amp; meters"
+                        android:textColor="#757575"
+                        android:textSize="12sp"
+                        android:layout_marginTop="2dp" />
+                </LinearLayout>
+
+                <Switch
+                    android:id="@+id/switchUnits"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:thumbTint="#FF9800"
+                    android:trackTint="#424242" />
+            </LinearLayout>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="#2A2A2A" />
+
+            <!-- Wi-Fi internet sharing toggle -->
+            <LinearLayout style="@style/ToggleRow">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Share Internet to Glasses"
+                        android:textColor="#E0E0E0"
+                        android:textSize="15sp" />
+
+                    <TextView
+                        android:id="@+id/wifiShareStatus"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Create Wi-Fi Direct hotspot for glasses"
+                        android:textColor="#757575"
+                        android:textSize="12sp"
+                        android:layout_marginTop="2dp" />
+                </LinearLayout>
+
+                <Switch
+                    android:id="@+id/switchWifiShare"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:thumbTint="#448AFF"
+                    android:trackTint="#424242" />
+            </LinearLayout>
+
+            <!-- Wi-Fi info (shown when active) -->
+            <LinearLayout
+                android:id="@+id/wifiInfoCard"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="@drawable/bg_card_blue"
+                android:padding="12dp"
+                android:layout_marginTop="8dp"
+                android:visibility="gone">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Connect glasses to this network:"
+                    android:textColor="#90CAF9"
+                    android:textSize="12sp"
+                    android:layout_marginBottom="6dp" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="SSID  "
+                        android:textColor="#64B5F6"
+                        android:textSize="12sp" />
+
+                    <TextView
+                        android:id="@+id/wifiSsidText"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:textColor="#FFFFFF"
+                        android:textSize="15sp"
+                        android:textStyle="bold"
+                        android:fontFamily="monospace" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginTop="2dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Pass  "
+                        android:textColor="#64B5F6"
+                        android:textSize="12sp" />
+
+                    <TextView
+                        android:id="@+id/wifiPassText"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:textColor="#BBDEFB"
+                        android:textSize="14sp"
+                        android:fontFamily="monospace" />
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/wifiClientsText"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:textColor="#546E7A"
+                    android:textSize="11sp"
+                    android:layout_marginTop="8dp" />
+            </LinearLayout>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="#2A2A2A"
+                android:layout_marginTop="12dp" />
+
+            <!-- Notification forwarding -->
+            <LinearLayout style="@style/ToggleRow">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Notification Forwarding"
+                        android:textColor="#E0E0E0"
+                        android:textSize="15sp" />
+
+                    <TextView
+                        android:id="@+id/notifStatusText"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Show phone notifications on glasses"
+                        android:textColor="#757575"
+                        android:textSize="12sp"
+                        android:layout_marginTop="2dp" />
+                </LinearLayout>
+
+                <Button
+                    android:id="@+id/btnNotifAccess"
+                    android:layout_width="wrap_content"
+                    android:layout_height="34dp"
+                    android:minWidth="0dp"
+                    android:text="Grant"
+                    android:backgroundTint="#2A2A2A"
+                    android:textColor="#00E676"
+                    android:textSize="12sp"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp"
+                    android:paddingHorizontal="16dp" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- ═══════════════════════════════════════════════════════════════ -->
+        <!-- STATUS                                                         -->
+        <!-- ═══════════════════════════════════════════════════════════════ -->
+        <TextView
+            android:id="@+id/statusText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="#616161"
+            android:textSize="12sp"
+            android:fontFamily="monospace"
+            android:gravity="center"
+            android:padding="8dp"
+            android:text="Tap Start Streaming to begin" />
+
+    </LinearLayout>
+</ScrollView>

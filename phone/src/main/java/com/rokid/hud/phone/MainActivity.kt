@@ -1,0 +1,585 @@
+package com.rokid.hud.phone
+
+import android.Manifest
+import android.content.ComponentName
+import android.content.Context
+import android.content.Intent
+import android.content.ServiceConnection
+import android.content.pm.PackageManager
+import android.os.Build
+import android.os.Bundle
+import android.os.IBinder
+import android.provider.Settings
+import android.util.Log
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
+import android.view.inputmethod.InputMethodManager
+import android.widget.*
+import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
+import com.rokid.hud.shared.protocol.Waypoint
+
+class MainActivity : AppCompatActivity() {
+
+    companion object {
+        private const val TAG = "MainActivity"
+        private const val RC_PERMISSIONS = 100
+        private const val RC_WIFI_PERM = 101
+        private const val PREF_TTS = "tts_enabled"
+        private const val PREF_IMPERIAL = "use_imperial"
+        private const val PREFS_GLASSES = "rokid_glasses"
+    }
+
+    private lateinit var btAudioRouter: BluetoothAudioRouter
+
+    // Header & status
+    private lateinit var btnStart: Button
+    private lateinit var glassesStatusDot: View
+    private lateinit var glassesStatusText: TextView
+    private lateinit var btnScanGlasses: Button
+    private lateinit var statusText: TextView
+
+    // Navigate section
+    private lateinit var searchInput: EditText
+    private lateinit var btnSearch: ImageButton
+    private lateinit var btnShowSaved: Button
+    private lateinit var searchResults: ListView
+    private lateinit var routeCard: LinearLayout
+    private lateinit var routeDestText: TextView
+    private lateinit var routeInfoText: TextView
+    private lateinit var btnNavigate: Button
+    private lateinit var btnSavePlace: Button
+
+    // Live directions
+    private lateinit var navStatus: LinearLayout
+    private lateinit var navInstructionText: TextView
+    private lateinit var navDistanceText: TextView
+    private lateinit var btnStopNav: Button
+
+    // Settings
+    private lateinit var switchUnits: Switch
+    private lateinit var switchTts: Switch
+    private lateinit var switchWifiShare: Switch
+    private lateinit var wifiShareStatus: TextView
+    private lateinit var wifiInfoCard: LinearLayout
+    private lateinit var wifiSsidText: TextView
+    private lateinit var wifiPassText: TextView
+    private lateinit var wifiClientsText: TextView
+    private lateinit var notifStatusText: TextView
+    private lateinit var btnNotifAccess: Button
+
+    // Managers
+    private lateinit var wifiShareManager: WifiShareManager
+    private lateinit var savedPlacesManager: SavedPlacesManager
+
+    // State
+    private var service: HudStreamingService? = null
+    private var bound = false
+    private var streaming = false
+    private var searchResultsList: List<SearchResult> = emptyList()
+    private var savedPlacesList: List<SavedPlace> = emptyList()
+    private var selectedDest: SearchResult? = null
+    private var showingSaved = false
+
+    private val connection = object : ServiceConnection {
+        override fun onServiceConnected(name: ComponentName?, binder: IBinder?) {
+            service = (binder as HudStreamingService.LocalBinder).getService()
+            bound = true
+            streaming = true
+            service?.uiCallback = navCallback
+            sendCurrentSettings()
+            updateStreamingUi()
+        }
+        override fun onServiceDisconnected(name: ComponentName?) {
+            service = null; bound = false; streaming = false
+            updateStreamingUi()
+        }
+    }
+
+    private val navCallback = object : NavigationCallback {
+        override fun onRouteCalculated(waypoints: List<Waypoint>, totalDistance: Double, totalDuration: Double) {
+            runOnUiThread {
+                routeInfoText.text = "${formatDist(totalDistance)}  ·  ${formatTime(totalDuration)}"
+                showNavStatus()
+            }
+        }
+        override fun onStepChanged(instruction: String, maneuver: String, distance: Double) {
+            runOnUiThread {
+                navInstructionText.text = instruction
+                navDistanceText.text = formatDist(distance)
+                speakNavInstruction(instruction, distance)
+            }
+        }
+        override fun onNavigationError(message: String) {
+            runOnUiThread {
+                Toast.makeText(this@MainActivity, "Navigation error: $message", Toast.LENGTH_LONG).show()
+                btnNavigate.isEnabled = true
+                routeInfoText.text = "Route failed — try again"
+            }
+        }
+        override fun onArrived() {
+            runOnUiThread {
+                navInstructionText.text = "You have arrived!"
+                navDistanceText.text = ""
+                speakNavInstruction("You have arrived!", 0.0)
+                Toast.makeText(this@MainActivity, "Arrived at destination!", Toast.LENGTH_SHORT).show()
+            }
+        }
+        override fun onRerouting() {
+            runOnUiThread {
+                navInstructionText.text = "Recalculating route..."
+                navDistanceText.text = ""
+            }
+        }
+    }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_main)
+
+        savedPlacesManager = SavedPlacesManager(this)
+        btAudioRouter = BluetoothAudioRouter(applicationContext)
+        btAudioRouter.init()
+
+        bindViews()
+        setupWifiManager()
+        setupListeners()
+        updateGlassesStatus()
+        updateNotifStatus()
+    }
+
+    private fun bindViews() {
+        btnStart = findViewById(R.id.btnStart)
+        glassesStatusDot = findViewById(R.id.glassesStatusDot)
+        glassesStatusText = findViewById(R.id.glassesStatusText)
+        btnScanGlasses = findViewById(R.id.btnScanGlasses)
+        statusText = findViewById(R.id.statusText)
+
+        searchInput = findViewById(R.id.searchInput)
+        btnSearch = findViewById(R.id.btnSearch)
+        btnShowSaved = findViewById(R.id.btnShowSaved)
+        searchResults = findViewById(R.id.searchResults)
+        routeCard = findViewById(R.id.routeCard)
+        routeDestText = findViewById(R.id.routeDestText)
+        routeInfoText = findViewById(R.id.routeInfoText)
+        btnNavigate = findViewById(R.id.btnNavigate)
+        btnSavePlace = findViewById(R.id.btnSavePlace)
+
+        navStatus = findViewById(R.id.navStatus)
+        navInstructionText = findViewById(R.id.navInstructionText)
+        navDistanceText = findViewById(R.id.navDistanceText)
+        btnStopNav = findViewById(R.id.btnStopNav)
+
+        switchUnits = findViewById(R.id.switchUnits)
+        switchTts = findViewById(R.id.switchTts)
+        switchWifiShare = findViewById(R.id.switchWifiShare)
+        wifiShareStatus = findViewById(R.id.wifiShareStatus)
+        wifiInfoCard = findViewById(R.id.wifiInfoCard)
+        wifiSsidText = findViewById(R.id.wifiSsidText)
+        wifiPassText = findViewById(R.id.wifiPassText)
+        wifiClientsText = findViewById(R.id.wifiClientsText)
+        notifStatusText = findViewById(R.id.notifStatusText)
+        btnNotifAccess = findViewById(R.id.btnNotifAccess)
+
+        switchTts.isChecked = getPreferences(MODE_PRIVATE).getBoolean(PREF_TTS, false)
+        switchUnits.isChecked = getPreferences(MODE_PRIVATE).getBoolean(PREF_IMPERIAL, false)
+    }
+
+    private fun setupWifiManager() {
+        wifiShareManager = WifiShareManager(applicationContext)
+        wifiShareManager.init()
+        wifiShareManager.onStateChanged = { state -> runOnUiThread { updateWifiUi(state) } }
+        switchWifiShare.isChecked = wifiShareManager.wasEnabled()
+        if (wifiShareManager.wasEnabled()) {
+            wifiShareManager.startSharing()
+        }
+    }
+
+    private fun setupListeners() {
+        btnStart.setOnClickListener { checkPermissionsAndStart() }
+        btnScanGlasses.setOnClickListener {
+            startActivity(Intent(this, DeviceScanActivity::class.java))
+        }
+
+        btnSearch.setOnClickListener { performSearch() }
+        searchInput.setOnEditorActionListener { _, _, _ -> performSearch(); true }
+        btnShowSaved.setOnClickListener { toggleSavedPlaces() }
+        searchResults.setOnItemClickListener { _, _, pos, _ -> onItemSelected(pos) }
+        btnNavigate.setOnClickListener { startNavigation() }
+        btnSavePlace.setOnClickListener { saveCurrentPlace() }
+        btnStopNav.setOnClickListener { stopNavigation() }
+        btnNotifAccess.setOnClickListener { openNotificationListenerSettings() }
+
+        switchTts.setOnCheckedChangeListener { _, isChecked ->
+            getPreferences(MODE_PRIVATE).edit().putBoolean(PREF_TTS, isChecked).apply()
+            sendCurrentSettings()
+        }
+
+        switchUnits.setOnCheckedChangeListener { _, isChecked ->
+            getPreferences(MODE_PRIVATE).edit().putBoolean(PREF_IMPERIAL, isChecked).apply()
+            sendCurrentSettings()
+        }
+
+        switchWifiShare.setOnCheckedChangeListener { _, isChecked ->
+            if (isChecked) checkWifiPermissionsAndStart() else wifiShareManager.stopSharing()
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        updateGlassesStatus()
+        updateNotifStatus()
+        if (bound) service?.uiCallback = navCallback
+        if (streaming) btAudioRouter.connectAudio()
+    }
+
+    override fun onDestroy() {
+        btAudioRouter.release()
+        wifiShareManager.release()
+        if (bound) { unbindService(connection); bound = false }
+        super.onDestroy()
+    }
+
+    // ── Glasses status ─────────────────────────────────────────────────────
+
+    private fun updateGlassesStatus() {
+        val prefs = getSharedPreferences(PREFS_GLASSES, MODE_PRIVATE)
+        val savedName = prefs.getString("glasses_name", null)
+        if (savedName != null) {
+            glassesStatusText.text = "Paired: $savedName"
+            glassesStatusDot.setBackgroundResource(R.drawable.bg_status_dot_connected)
+            btnScanGlasses.text = "Change"
+        } else {
+            glassesStatusText.text = "No glasses paired"
+            glassesStatusDot.setBackgroundResource(R.drawable.bg_status_dot_disconnected)
+            btnScanGlasses.text = "Pair Glasses"
+        }
+    }
+
+    private fun updateStreamingUi() {
+        if (streaming) {
+            btnStart.text = "Streaming"
+            btnStart.isEnabled = false
+            btnStart.backgroundTintList = android.content.res.ColorStateList.valueOf(0xFF2E7D32.toInt())
+            statusText.text = "Streaming to glasses — search a destination"
+        } else {
+            btnStart.text = "Start Streaming"
+            btnStart.isEnabled = true
+            btnStart.backgroundTintList = android.content.res.ColorStateList.valueOf(0xFF00E676.toInt())
+            statusText.text = "Tap Start Streaming to begin"
+        }
+    }
+
+    // ── Search ─────────────────────────────────────────────────────────────
+
+    private fun performSearch() {
+        val query = searchInput.text.toString().trim()
+        if (query.isBlank()) return
+        hideKeyboard()
+        showingSaved = false
+        btnSearch.isEnabled = false
+        statusText.text = "Searching..."
+
+        Thread {
+            try {
+                val results = NominatimClient.search(query)
+                runOnUiThread {
+                    searchResultsList = results
+                    if (results.isEmpty()) {
+                        statusText.text = "No results found"
+                        searchResults.visibility = View.GONE
+                    } else {
+                        setResultsList(results.map { it.displayName }, false)
+                        searchResults.visibility = View.VISIBLE
+                        adjustListHeight()
+                        statusText.text = "${results.size} results"
+                    }
+                    btnSearch.isEnabled = true
+                }
+            } catch (e: Exception) {
+                runOnUiThread {
+                    statusText.text = "Search error: ${e.message}"
+                    btnSearch.isEnabled = true
+                }
+            }
+        }.start()
+    }
+
+    // ── Saved places ───────────────────────────────────────────────────────
+
+    private fun toggleSavedPlaces() {
+        if (showingSaved && searchResults.visibility == View.VISIBLE) {
+            searchResults.visibility = View.GONE
+            showingSaved = false
+            btnShowSaved.text = "Saved Places"
+            return
+        }
+        showingSaved = true
+        savedPlacesList = savedPlacesManager.getAll()
+        if (savedPlacesList.isEmpty()) {
+            Toast.makeText(this, "No saved places yet", Toast.LENGTH_SHORT).show()
+            searchResults.visibility = View.GONE
+            return
+        }
+        setResultsList(savedPlacesList.map { it.name }, true)
+        searchResults.visibility = View.VISIBLE
+        adjustListHeight()
+        btnShowSaved.text = "Hide Saved"
+        statusText.text = "${savedPlacesList.size} saved place(s)"
+
+        searchResults.setOnItemLongClickListener { _, _, pos, _ ->
+            if (showingSaved && pos < savedPlacesList.size) {
+                val place = savedPlacesList[pos]
+                savedPlacesManager.delete(place)
+                Toast.makeText(this, "Removed: ${place.name}", Toast.LENGTH_SHORT).show()
+                toggleSavedPlaces()
+                true
+            } else false
+        }
+    }
+
+    private fun saveCurrentPlace() {
+        val dest = selectedDest ?: return
+        val parts = dest.displayName.split(",").map { it.trim() }
+        val shortName = if (parts.size >= 2) parts.take(3).joinToString(", ") else dest.displayName
+        savedPlacesManager.save(SavedPlace(shortName, dest.lat, dest.lng))
+        Toast.makeText(this, "Saved: $shortName", Toast.LENGTH_SHORT).show()
+        btnSavePlace.text = "Saved!"
+        btnSavePlace.isEnabled = false
+    }
+
+    private fun onItemSelected(position: Int) {
+        if (showingSaved) {
+            if (position >= savedPlacesList.size) return
+            val place = savedPlacesList[position]
+            selectedDest = SearchResult(place.name, place.lat, place.lng)
+        } else {
+            if (position >= searchResultsList.size) return
+            selectedDest = searchResultsList[position]
+        }
+        searchResults.visibility = View.GONE
+
+        val dest = selectedDest!!
+        routeDestText.text = dest.displayName
+        routeInfoText.text = "Tap Start Navigation to calculate route"
+        routeCard.visibility = View.VISIBLE
+        navStatus.visibility = View.GONE
+        btnNavigate.isEnabled = true
+        btnSavePlace.text = "Save"
+        btnSavePlace.isEnabled = true
+    }
+
+    private fun setResultsList(items: List<String>, isSaved: Boolean) {
+        searchResults.adapter = object : ArrayAdapter<String>(this, R.layout.item_search_result, items) {
+            override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
+                val view = convertView ?: LayoutInflater.from(context)
+                    .inflate(R.layout.item_search_result, parent, false)
+                val icon = view.findViewById<TextView>(R.id.resultIcon)
+                val text = view.findViewById<TextView>(android.R.id.text1)
+                icon.text = if (isSaved) "\u2B50" else "\uD83D\uDCCD"
+                text.text = getItem(position)
+                return view
+            }
+        }
+    }
+
+    private fun adjustListHeight() {
+        val count = searchResults.adapter?.count ?: 0
+        val maxItems = minOf(count, 5)
+        val itemH = (52 * resources.displayMetrics.density).toInt()
+        val params = searchResults.layoutParams
+        params.height = maxItems * itemH
+        searchResults.layoutParams = params
+    }
+
+    // ── Navigation ─────────────────────────────────────────────────────────
+
+    private fun startNavigation() {
+        val dest = selectedDest ?: return
+        if (!bound || service == null) {
+            Toast.makeText(this, "Start streaming first", Toast.LENGTH_SHORT).show()
+            return
+        }
+        routeInfoText.text = "Calculating route..."
+        btnNavigate.isEnabled = false
+        service!!.startNavigation(dest.lat, dest.lng)
+    }
+
+    private fun showNavStatus() {
+        navStatus.visibility = View.VISIBLE
+        btnNavigate.isEnabled = true
+    }
+
+    private fun stopNavigation() {
+        service?.stopNavigation()
+        navStatus.visibility = View.GONE
+        navInstructionText.text = ""
+        navDistanceText.text = ""
+    }
+
+    // ── Wi-Fi sharing ──────────────────────────────────────────────────────
+
+    private fun updateWifiUi(state: WifiShareManager.State) {
+        when (state) {
+            WifiShareManager.State.OFF -> {
+                wifiShareStatus.text = "Create Wi-Fi Direct hotspot for glasses"
+                wifiInfoCard.visibility = View.GONE
+                switchWifiShare.isChecked = false
+                service?.sendWifiCreds("", "", false)
+            }
+            WifiShareManager.State.CREATING -> {
+                wifiShareStatus.text = "Creating hotspot..."
+                wifiInfoCard.visibility = View.GONE
+            }
+            WifiShareManager.State.ACTIVE -> {
+                wifiShareStatus.text = "Hotspot active"
+                wifiInfoCard.visibility = View.VISIBLE
+                wifiSsidText.text = wifiShareManager.groupSsid
+                wifiPassText.text = wifiShareManager.groupPassphrase
+                val n = wifiShareManager.connectedClients
+                wifiClientsText.text = if (n == 0) "Sending credentials to glasses..." else "$n device(s) connected"
+                switchWifiShare.isChecked = true
+                service?.sendWifiCreds(wifiShareManager.groupSsid, wifiShareManager.groupPassphrase, true)
+            }
+            WifiShareManager.State.FAILED -> {
+                wifiShareStatus.text = "Failed: ${wifiShareManager.lastError}"
+                wifiInfoCard.visibility = View.GONE
+            }
+        }
+    }
+
+    private fun checkWifiPermissionsAndStart() {
+        val needed = mutableListOf<String>()
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+            != PackageManager.PERMISSION_GRANTED) needed.add(Manifest.permission.ACCESS_FINE_LOCATION)
+        if (Build.VERSION.SDK_INT >= 33) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.NEARBY_WIFI_DEVICES)
+                != PackageManager.PERMISSION_GRANTED) needed.add(Manifest.permission.NEARBY_WIFI_DEVICES)
+        }
+        if (needed.isNotEmpty()) {
+            ActivityCompat.requestPermissions(this, needed.toTypedArray(), RC_WIFI_PERM)
+        } else {
+            wifiShareManager.startSharing()
+        }
+    }
+
+    // ── Notification status ────────────────────────────────────────────────
+
+    private fun updateNotifStatus() {
+        val enabled = isNotificationListenerEnabled()
+        if (enabled) {
+            notifStatusText.text = "Notifications forwarding to glasses"
+            notifStatusText.setTextColor(0xFF66BB6A.toInt())
+            btnNotifAccess.text = "Granted"
+            btnNotifAccess.isEnabled = false
+        } else {
+            notifStatusText.text = "Show phone notifications on glasses"
+            notifStatusText.setTextColor(0xFF757575.toInt())
+            btnNotifAccess.text = "Grant"
+            btnNotifAccess.isEnabled = true
+        }
+    }
+
+    // ── Permissions & streaming ────────────────────────────────────────────
+
+    private fun checkPermissionsAndStart() {
+        val needed = mutableListOf<String>()
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+            != PackageManager.PERMISSION_GRANTED) needed.add(Manifest.permission.ACCESS_FINE_LOCATION)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT)
+                != PackageManager.PERMISSION_GRANTED) needed.add(Manifest.permission.BLUETOOTH_CONNECT)
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_SCAN)
+                != PackageManager.PERMISSION_GRANTED) needed.add(Manifest.permission.BLUETOOTH_SCAN)
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
+                != PackageManager.PERMISSION_GRANTED) needed.add(Manifest.permission.POST_NOTIFICATIONS)
+        }
+        if (needed.isNotEmpty()) {
+            ActivityCompat.requestPermissions(this, needed.toTypedArray(), RC_PERMISSIONS)
+        } else {
+            startStreaming()
+        }
+    }
+
+    override fun onRequestPermissionsResult(rc: Int, perms: Array<out String>, results: IntArray) {
+        super.onRequestPermissionsResult(rc, perms, results)
+        when (rc) {
+            RC_PERMISSIONS -> {
+                if (results.all { it == PackageManager.PERMISSION_GRANTED }) startStreaming()
+            }
+            RC_WIFI_PERM -> {
+                if (results.all { it == PackageManager.PERMISSION_GRANTED }) {
+                    wifiShareManager.startSharing()
+                } else {
+                    switchWifiShare.isChecked = false
+                    Toast.makeText(this, "Wi-Fi permissions required", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
+    private fun startStreaming() {
+        val intent = Intent(this, HudStreamingService::class.java)
+        ContextCompat.startForegroundService(this, intent)
+        bindService(intent, connection, Context.BIND_AUTO_CREATE)
+        streaming = true
+        updateStreamingUi()
+        statusText.text = "Streaming started — search a destination"
+        btAudioRouter.connectAudio()
+    }
+
+    // ── Misc ───────────────────────────────────────────────────────────────
+
+    private fun openNotificationListenerSettings() {
+        startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
+    }
+
+    private fun isNotificationListenerEnabled(): Boolean {
+        val cn = ComponentName(this, HudNotificationListenerService::class.java)
+        val flat = Settings.Secure.getString(contentResolver, "enabled_notification_listeners")
+        return flat?.contains(cn.flattenToString()) == true
+    }
+
+    private fun hideKeyboard() {
+        val imm = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
+        imm.hideSoftInputFromWindow(searchInput.windowToken, 0)
+    }
+
+    private fun speakNavInstruction(instruction: String, distance: Double) {
+        if (!getPreferences(MODE_PRIVATE).getBoolean(PREF_TTS, false)) return
+        btAudioRouter.speak(instruction, distance, isImperial())
+    }
+
+    private fun sendCurrentSettings() {
+        val prefs = getPreferences(MODE_PRIVATE)
+        service?.sendSettings(
+            ttsEnabled = prefs.getBoolean(PREF_TTS, false),
+            useImperial = prefs.getBoolean(PREF_IMPERIAL, false)
+        )
+    }
+
+    private fun isImperial(): Boolean = getPreferences(MODE_PRIVATE).getBoolean(PREF_IMPERIAL, false)
+
+    private fun formatDist(m: Double): String = if (isImperial()) {
+        val feet = m * 3.28084
+        val miles = m / 1609.344
+        when {
+            miles >= 0.1 -> String.format("%.1f mi", miles)
+            else -> String.format("%.0f ft", feet)
+        }
+    } else {
+        when {
+            m >= 1000 -> String.format("%.1f km", m / 1000)
+            else -> String.format("%.0f m", m)
+        }
+    }
+
+    private fun formatTime(s: Double): String {
+        val mins = (s / 60).toInt()
+        return if (mins >= 60) "${mins / 60}h ${mins % 60}m" else "${mins} min"
+    }
+}

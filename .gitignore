@@ -1,0 +1,28 @@
+# Local configuration (SDK path, Rokid credentials)
+local.properties
+
+# Build outputs
+build/
+*.apk
+*.aab
+*.ap_
+*.dex
+.gradle/
+!gradle/wrapper/gradle-wrapper.jar
+
+# IDE
+.idea/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+*.log
+.externalNativeBuild
+.cxx
+captures/
+
+# Cursor / agent
+agent-transcripts/
+agent-tools/
+mcps/

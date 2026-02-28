@@ -1,0 +1,2 @@
+-keepattributes *Annotation*
+-keep class com.rokid.hud.shared.protocol.** { *; }

@@ -1,0 +1,10 @@
+## Copy this file to local.properties and fill in your values.
+## Do not commit local.properties (it is in .gitignore).
+
+# Android SDK path (required)
+sdk.dir=C\:\\Users\\YOUR_USERNAME\\AppData\\Local\\Android\\Sdk
+
+# Rokid SDK credentials (optional — for Rokid CXR SDK if you add the AAR)
+rokid.clientId=YOUR_CLIENT_ID
+rokid.clientSecret=YOUR_CLIENT_SECRET
+rokid.accessKey=YOUR_ACCESS_KEY
