@@ -100,6 +100,19 @@
                 android:textSize="12sp"
                 android:insetTop="0dp"
                 android:insetBottom="0dp"
+                android:paddingHorizontal="16dp"
+                android:layout_marginEnd="8dp" />
+            <Button
+                android:id="@+id/btnUpdateGlassesApp"
+                android:layout_width="wrap_content"
+                android:layout_height="34dp"
+                android:minWidth="0dp"
+                android:text="Update app"
+                android:backgroundTint="#2A2A2A"
+                android:textColor="#00E676"
+                android:textSize="12sp"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
                 android:paddingHorizontal="16dp" />
         </LinearLayout>
 
@@ -406,7 +419,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Share Internet to Glasses"
+                        android:text="Wi-Fi Direct (local link)"
                         android:textColor="#E0E0E0"
                         android:textSize="15sp" />
 
@@ -414,7 +427,7 @@
                         android:id="@+id/wifiShareStatus"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Create Wi-Fi Direct hotspot for glasses"
+                        android:text="P2P hotspot — no internet. Use Mobile Hotspot below for map tiles."
                         android:textColor="#757575"
                         android:textSize="12sp"
                         android:layout_marginTop="2dp" />
@@ -502,6 +515,68 @@
                     android:textColor="#546E7A"
                     android:textSize="11sp"
                     android:layout_marginTop="8dp" />
+            </LinearLayout>
+
+            <!-- Share internet: Mobile Hotspot (glasses get real internet) -->
+            <LinearLayout
+                android:id="@+id/hotspotCard"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="@drawable/bg_card_accent"
+                android:padding="12dp"
+                android:layout_marginTop="10dp">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Share internet (Mobile Hotspot)"
+                    android:textColor="#FFB74D"
+                    android:textSize="14sp"
+                    android:textStyle="bold" />
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Turn on Mobile Hotspot in phone Settings \u2192 Network \u2192 Hotspot. Then enter its name and password here so glasses can load map tiles."
+                    android:textColor="#BCAAA4"
+                    android:textSize="11sp"
+                    android:layout_marginTop="4dp" />
+
+                <EditText
+                    android:id="@+id/hotspotSsidInput"
+                    android:layout_width="match_parent"
+                    android:layout_height="40dp"
+                    android:hint="Hotspot name (SSID)"
+                    android:inputType="text"
+                    android:maxLines="1"
+                    android:background="@drawable/bg_search"
+                    android:paddingHorizontal="12dp"
+                    android:textColor="#FFFFFF"
+                    android:textColorHint="#757575"
+                    android:layout_marginTop="8dp" />
+                <EditText
+                    android:id="@+id/hotspotPassInput"
+                    android:layout_width="match_parent"
+                    android:layout_height="40dp"
+                    android:hint="Hotspot password"
+                    android:inputType="textPassword"
+                    android:maxLines="1"
+                    android:background="@drawable/bg_search"
+                    android:paddingHorizontal="12dp"
+                    android:textColor="#FFFFFF"
+                    android:textColorHint="#757575"
+                    android:layout_marginTop="6dp" />
+                <Button
+                    android:id="@+id/btnSendHotspotToGlasses"
+                    android:layout_width="match_parent"
+                    android:layout_height="40dp"
+                    android:text="Send to glasses \u2192 connect with internet"
+                    android:backgroundTint="#FF9800"
+                    android:textColor="#000000"
+                    android:textSize="13sp"
+                    android:layout_marginTop="8dp"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp" />
             </LinearLayout>
 
             <View

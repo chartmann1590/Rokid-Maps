@@ -22,6 +22,14 @@ object ProtocolConstants {
     const val FIELD_WIFI_SSID = "wifiSsid"
     const val FIELD_WIFI_PASS = "wifiPass"
     const val FIELD_WIFI_ENABLED = "wifiEnabled"
+    const val FIELD_TILE_ID = "id"
+    const val FIELD_TILE_Z = "z"
+    const val FIELD_TILE_X = "x"
+    const val FIELD_TILE_Y = "y"
+    const val FIELD_TILE_DATA = "data"
+    const val FIELD_APK_SIZE = "apkSize"
+    const val FIELD_APK_CHUNKS = "apkChunks"
+    const val FIELD_APK_INDEX = "apkIdx"
 
     object MessageType {
         const val STATE = "state"
@@ -30,5 +38,10 @@ object ProtocolConstants {
         const val NOTIFICATION = "notification"
         const val SETTINGS = "settings"
         const val WIFI_CREDS = "wifi_creds"
+        const val TILE_REQ = "tile_req"
+        const val TILE_RESP = "tile_resp"
+        const val APK_START = "apk_start"
+        const val APK_CHUNK = "apk_chunk"
+        const val APK_END = "apk_end"
     }
 }

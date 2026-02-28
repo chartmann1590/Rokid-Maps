@@ -42,3 +42,11 @@ data class WifiCredsMessage(
     val passphrase: String,
     val enabled: Boolean
 )
+
+data class TileRequestMessage(val id: String, val z: Int, val x: Int, val y: Int)
+
+data class TileResponseMessage(val id: String, val data: String?)
+
+data class ApkStartMessage(val totalSize: Long, val totalChunks: Int)
+data class ApkChunkMessage(val index: Int, val data: String)
+data class ApkEndMessage(val placeholder: Boolean = true)

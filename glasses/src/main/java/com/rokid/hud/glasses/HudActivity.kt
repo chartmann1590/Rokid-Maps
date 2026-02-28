@@ -1,8 +1,12 @@
 package com.rokid.hud.glasses
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
+import androidx.core.content.FileProvider
+import java.io.File
 import android.os.Bundle
 import android.speech.tts.TextToSpeech
 import android.util.Log
@@ -57,7 +61,9 @@ class HudActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             onStateUpdate = { newState ->
                 runOnUiThread {
                     hudView.state = newState
-
+                    tileManager.onTileRequestViaProxy = if (newState.btConnected) {
+                        { z, x, y, id -> btClient.sendTileRequest(z, x, y, id) }
+                    } else null
                     if (newState.ttsEnabled && ttsReady
                         && newState.instruction.isNotBlank()
                         && newState.instruction != lastSpokenInstruction
@@ -77,6 +83,7 @@ class HudActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 }
             }
         )
+        btClient.onTileReceived = { id, data -> tileManager.deliverTile(id, data) }
 
         requestPermissionsAndStartBt()
     }
@@ -130,6 +137,25 @@ class HudActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
     private fun toggleLayout() {
         hudView.state = hudView.state.toggleLayout()
+    }
+
+    private fun installReceivedApk(file: File) {
+        try {
+            val uri: Uri = FileProvider.getUriForFile(
+                this,
+                "${packageName}.fileprovider",
+                file
+            )
+            val intent = Intent(Intent.ACTION_VIEW).apply {
+                setDataAndType(uri, "application/vnd.android.package-archive")
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            startActivity(intent)
+            Log.i(TAG, "Install intent started for received APK")
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to launch installer: ${e.message}")
+        }
     }
 
     private fun requestPermissionsAndStartBt() {

@@ -6,10 +6,15 @@ import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothManager
 import android.bluetooth.BluetoothSocket
 import android.content.Context
+import android.util.Base64
 import android.util.Log
 import com.rokid.hud.shared.protocol.*
 import java.io.BufferedReader
+import java.io.BufferedWriter
+import java.io.File
+import java.io.FileOutputStream
 import java.io.InputStreamReader
+import java.io.OutputStreamWriter
 import java.util.UUID
 
 class BluetoothClient(
@@ -26,7 +31,13 @@ class BluetoothClient(
     @Volatile private var running = false
     @Volatile private var currentState = HudState()
     @Volatile private var btConnected = false
-    private var socket: BluetoothSocket? = null
+    @Volatile private var socket: BluetoothSocket? = null
+    @Volatile private var writer: BufferedWriter? = null
+    var onTileReceived: ((id: String, data: String?) -> Unit)? = null
+    var onApkReceived: ((File) -> Unit)? = null
+
+    private var apkOutputStream: FileOutputStream? = null
+    private var apkFile: File? = null
 
     fun start() {
         if (running) return
@@ -69,6 +80,7 @@ class BluetoothClient(
                 val s = tryConnect(device)
                 if (s != null) {
                     socket = s
+                    writer = BufferedWriter(OutputStreamWriter(s.outputStream, Charsets.UTF_8))
                     Log.i(TAG, "Connected to $name (${device.address})")
                     connected = true
                     btConnected = true
@@ -78,6 +90,7 @@ class BluetoothClient(
                         readFromSocket(s)
                     } catch (_: Exception) {}
                     try { s.close() } catch (_: Exception) {}
+                    writer = null
                     socket = null
                     btConnected = false
                     currentState = currentState.copy(btConnected = false)
@@ -185,10 +198,57 @@ class BluetoothClient(
                 Log.i(TAG, "Received Wi-Fi creds: ssid=${parsed.msg.ssid} enabled=${parsed.msg.enabled}")
                 onWifiCreds?.invoke(parsed.msg.ssid, parsed.msg.passphrase, parsed.msg.enabled)
             }
+            is ParsedMessage.TileResp ->
+                onTileReceived?.invoke(parsed.msg.id, parsed.msg.data)
+            is ParsedMessage.TileReq -> { /* we send these, don't expect to receive */ }
+            is ParsedMessage.ApkStart -> {
+                try {
+                    apkOutputStream?.close()
+                } catch (_: Exception) {}
+                apkFile = File(context.cacheDir, "glasses_update.apk")
+                apkOutputStream = FileOutputStream(apkFile)
+                Log.i(TAG, "APK receive started, ${parsed.msg.totalChunks} chunks")
+            }
+            is ParsedMessage.ApkChunk -> {
+                try {
+                    val bytes = Base64.decode(parsed.msg.data, Base64.DEFAULT)
+                    apkOutputStream?.write(bytes)
+                } catch (e: Exception) {
+                    Log.w(TAG, "APK chunk ${parsed.msg.index} failed: ${e.message}")
+                }
+            }
+            is ParsedMessage.ApkEnd -> {
+                try {
+                    apkOutputStream?.close()
+                } catch (_: Exception) {}
+                apkOutputStream = null
+                val file = apkFile
+                apkFile = null
+                if (file != null && file.exists()) {
+                    Log.i(TAG, "APK receive complete: ${file.length()} bytes")
+                    onApkReceived?.invoke(file)
+                } else {
+                    Log.w(TAG, "APK file missing after receive")
+                }
+            }
             is ParsedMessage.Unknown -> {
                 Log.w(TAG, "Unknown message: $line")
             }
         }
         onStateUpdate(currentState)
+    }
+
+    fun sendTileRequest(z: Int, x: Int, y: Int, id: String) {
+        val w = writer ?: return
+        try {
+            val json = ProtocolCodec.encodeTileReq(TileRequestMessage(id = id, z = z, x = x, y = y))
+            synchronized(w) {
+                w.write(json)
+                w.newLine()
+                w.flush()
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Send tile req failed: ${e.message}")
+        }
     }
 }

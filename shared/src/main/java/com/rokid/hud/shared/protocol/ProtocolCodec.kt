@@ -10,6 +10,11 @@ sealed class ParsedMessage {
     data class Notification(val msg: NotificationMessage) : ParsedMessage()
     data class Settings(val msg: SettingsMessage) : ParsedMessage()
     data class WifiCreds(val msg: WifiCredsMessage) : ParsedMessage()
+    data class TileReq(val msg: TileRequestMessage) : ParsedMessage()
+    data class TileResp(val msg: TileResponseMessage) : ParsedMessage()
+    data class ApkStart(val msg: ApkStartMessage) : ParsedMessage()
+    data class ApkChunk(val msg: ApkChunkMessage) : ParsedMessage()
+    data class ApkEnd(val msg: ApkEndMessage) : ParsedMessage()
     data class Unknown(val raw: String) : ParsedMessage()
 }
 
@@ -64,6 +69,36 @@ object ProtocolCodec {
         put(ProtocolConstants.FIELD_WIFI_SSID, msg.ssid)
         put(ProtocolConstants.FIELD_WIFI_PASS, msg.passphrase)
         put(ProtocolConstants.FIELD_WIFI_ENABLED, msg.enabled)
+    }.toString()
+
+    fun encodeTileReq(msg: TileRequestMessage): String = JSONObject().apply {
+        put(ProtocolConstants.FIELD_TYPE, ProtocolConstants.MessageType.TILE_REQ)
+        put(ProtocolConstants.FIELD_TILE_ID, msg.id)
+        put(ProtocolConstants.FIELD_TILE_Z, msg.z)
+        put(ProtocolConstants.FIELD_TILE_X, msg.x)
+        put(ProtocolConstants.FIELD_TILE_Y, msg.y)
+    }.toString()
+
+    fun encodeTileResp(msg: TileResponseMessage): String = JSONObject().apply {
+        put(ProtocolConstants.FIELD_TYPE, ProtocolConstants.MessageType.TILE_RESP)
+        put(ProtocolConstants.FIELD_TILE_ID, msg.id)
+        put(ProtocolConstants.FIELD_TILE_DATA, msg.data ?: "")
+    }.toString()
+
+    fun encodeApkStart(msg: ApkStartMessage): String = JSONObject().apply {
+        put(ProtocolConstants.FIELD_TYPE, ProtocolConstants.MessageType.APK_START)
+        put(ProtocolConstants.FIELD_APK_SIZE, msg.totalSize)
+        put(ProtocolConstants.FIELD_APK_CHUNKS, msg.totalChunks)
+    }.toString()
+
+    fun encodeApkChunk(msg: ApkChunkMessage): String = JSONObject().apply {
+        put(ProtocolConstants.FIELD_TYPE, ProtocolConstants.MessageType.APK_CHUNK)
+        put(ProtocolConstants.FIELD_APK_INDEX, msg.index)
+        put(ProtocolConstants.FIELD_TILE_DATA, msg.data)
+    }.toString()
+
+    fun encodeApkEnd(): String = JSONObject().apply {
+        put(ProtocolConstants.FIELD_TYPE, ProtocolConstants.MessageType.APK_END)
     }.toString()
 
     fun decode(line: String): ParsedMessage {
@@ -124,6 +159,33 @@ object ProtocolCodec {
                         enabled = json.optBoolean(ProtocolConstants.FIELD_WIFI_ENABLED, false)
                     )
                 )
+                ProtocolConstants.MessageType.TILE_REQ -> ParsedMessage.TileReq(
+                    TileRequestMessage(
+                        id = json.getString(ProtocolConstants.FIELD_TILE_ID),
+                        z = json.getInt(ProtocolConstants.FIELD_TILE_Z),
+                        x = json.getInt(ProtocolConstants.FIELD_TILE_X),
+                        y = json.getInt(ProtocolConstants.FIELD_TILE_Y)
+                    )
+                )
+                ProtocolConstants.MessageType.TILE_RESP -> ParsedMessage.TileResp(
+                    TileResponseMessage(
+                        id = json.getString(ProtocolConstants.FIELD_TILE_ID),
+                        data = json.optString(ProtocolConstants.FIELD_TILE_DATA, null).takeIf { it?.isNotEmpty() == true }
+                    )
+                )
+                ProtocolConstants.MessageType.APK_START -> ParsedMessage.ApkStart(
+                    ApkStartMessage(
+                        totalSize = json.getLong(ProtocolConstants.FIELD_APK_SIZE),
+                        totalChunks = json.getInt(ProtocolConstants.FIELD_APK_CHUNKS)
+                    )
+                )
+                ProtocolConstants.MessageType.APK_CHUNK -> ParsedMessage.ApkChunk(
+                    ApkChunkMessage(
+                        index = json.getInt(ProtocolConstants.FIELD_APK_INDEX),
+                        data = json.getString(ProtocolConstants.FIELD_TILE_DATA)
+                    )
+                )
+                ProtocolConstants.MessageType.APK_END -> ParsedMessage.ApkEnd(ApkEndMessage())
                 else -> ParsedMessage.Unknown(line)
             }
         } catch (e: Exception) {

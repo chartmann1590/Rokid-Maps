@@ -2,6 +2,7 @@ package com.rokid.hud.glasses
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.content.Intent
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
@@ -13,7 +14,6 @@ import android.net.wifi.WifiNetworkSuggestion
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
-import android.os.PatternMatcher
 import android.provider.Settings
 import android.util.Log
 
@@ -122,7 +122,15 @@ class WifiConnector(private val context: Context) {
             Thread.sleep(POLL_INTERVAL_MS)
         }
 
-        Log.w(TAG, "Wi-Fi still not enabled after polling — proceeding anyway (enabled=${wifiMgr.isWifiEnabled})")
+        Log.w(TAG, "Wi-Fi still off — opening Wi-Fi settings so user can enable manually")
+        mainHandler.post {
+            try {
+                val intent = Intent(Settings.ACTION_WIFI_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                context.startActivity(intent)
+            } catch (e: Exception) {
+                Log.w(TAG, "Could not open Wi-Fi settings: ${e.message}")
+            }
+        }
     }
 
     private fun disableWifi() {

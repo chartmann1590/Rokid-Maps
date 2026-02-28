@@ -1,11 +1,13 @@
 package com.rokid.hud.phone
 
 import android.Manifest
+import android.app.AlertDialog
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.IBinder
@@ -27,6 +29,7 @@ class MainActivity : AppCompatActivity() {
         private const val TAG = "MainActivity"
         private const val RC_PERMISSIONS = 100
         private const val RC_WIFI_PERM = 101
+        private const val RC_PICK_APK = 102
         private const val PREF_TTS = "tts_enabled"
         private const val PREF_IMPERIAL = "use_imperial"
         private const val PREFS_GLASSES = "rokid_glasses"
@@ -39,6 +42,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var glassesStatusDot: View
     private lateinit var glassesStatusText: TextView
     private lateinit var btnScanGlasses: Button
+    private lateinit var btnUpdateGlassesApp: Button
     private lateinit var statusText: TextView
 
     // Navigate section
@@ -67,6 +71,9 @@ class MainActivity : AppCompatActivity() {
     private lateinit var wifiSsidText: TextView
     private lateinit var wifiPassText: TextView
     private lateinit var wifiClientsText: TextView
+    private lateinit var hotspotSsidInput: EditText
+    private lateinit var hotspotPassInput: EditText
+    private lateinit var btnSendHotspotToGlasses: Button
     private lateinit var notifStatusText: TextView
     private lateinit var btnNotifAccess: Button
 
@@ -155,6 +162,7 @@ class MainActivity : AppCompatActivity() {
         glassesStatusDot = findViewById(R.id.glassesStatusDot)
         glassesStatusText = findViewById(R.id.glassesStatusText)
         btnScanGlasses = findViewById(R.id.btnScanGlasses)
+        btnUpdateGlassesApp = findViewById(R.id.btnUpdateGlassesApp)
         statusText = findViewById(R.id.statusText)
 
         searchInput = findViewById(R.id.searchInput)
@@ -180,6 +188,9 @@ class MainActivity : AppCompatActivity() {
         wifiSsidText = findViewById(R.id.wifiSsidText)
         wifiPassText = findViewById(R.id.wifiPassText)
         wifiClientsText = findViewById(R.id.wifiClientsText)
+        hotspotSsidInput = findViewById(R.id.hotspotSsidInput)
+        hotspotPassInput = findViewById(R.id.hotspotPassInput)
+        btnSendHotspotToGlasses = findViewById(R.id.btnSendHotspotToGlasses)
         notifStatusText = findViewById(R.id.notifStatusText)
         btnNotifAccess = findViewById(R.id.btnNotifAccess)
 
@@ -202,6 +213,7 @@ class MainActivity : AppCompatActivity() {
         btnScanGlasses.setOnClickListener {
             startActivity(Intent(this, DeviceScanActivity::class.java))
         }
+        btnUpdateGlassesApp.setOnClickListener { openApkPicker() }
 
         btnSearch.setOnClickListener { performSearch() }
         searchInput.setOnEditorActionListener { _, _, _ -> performSearch(); true }
@@ -225,6 +237,74 @@ class MainActivity : AppCompatActivity() {
         switchWifiShare.setOnCheckedChangeListener { _, isChecked ->
             if (isChecked) checkWifiPermissionsAndStart() else wifiShareManager.stopSharing()
         }
+
+        btnSendHotspotToGlasses.setOnClickListener { sendHotspotToGlasses() }
+    }
+
+    private var apkProgressDialog: AlertDialog? = null
+
+    private fun openApkPicker() {
+        if (!bound || service == null) {
+            Toast.makeText(this, "Start streaming and connect glasses first", Toast.LENGTH_SHORT).show()
+            return
+        }
+        val intent = Intent(Intent.ACTION_GET_CONTENT).apply {
+            type = "*/*"
+            addCategory(Intent.CATEGORY_OPENABLE)
+            putExtra(Intent.EXTRA_MIME_TYPES, arrayOf("application/vnd.android.package-archive", "application/apk"))
+        }
+        try {
+            startActivityForResult(Intent.createChooser(intent, "Select glasses APK"), RC_PICK_APK)
+        } catch (e: Exception) {
+            startActivityForResult(Intent(Intent.ACTION_GET_CONTENT).setType("*/*").addCategory(Intent.CATEGORY_OPENABLE), RC_PICK_APK)
+        }
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == RC_PICK_APK && resultCode == RESULT_OK && data?.data != null) {
+            sendApkToGlasses(data.data!!)
+        }
+    }
+
+    private fun sendApkToGlasses(uri: Uri) {
+        apkProgressDialog = AlertDialog.Builder(this)
+            .setTitle("Update glasses app")
+            .setMessage("Sending APK... 0%")
+            .setCancelable(false)
+            .show()
+        service!!.sendApkToGlasses(
+            uri,
+            onProgress = { sent, total ->
+                val pct = if (total > 0) (100 * sent / total) else 0
+                apkProgressDialog?.setMessage("Sending APK... $pct%")
+            },
+            onDone = {
+                apkProgressDialog?.dismiss()
+                apkProgressDialog = null
+                Toast.makeText(this, "APK sent. Open the glasses and confirm install when prompted.", Toast.LENGTH_LONG).show()
+            },
+            onError = { msg ->
+                apkProgressDialog?.dismiss()
+                apkProgressDialog = null
+                Toast.makeText(this, "Failed: $msg", Toast.LENGTH_LONG).show()
+            }
+        )
+    }
+
+    private fun sendHotspotToGlasses() {
+        val ssid = hotspotSsidInput.text.toString().trim()
+        val pass = hotspotPassInput.text.toString()
+        if (ssid.isBlank()) {
+            Toast.makeText(this, "Enter your hotspot name (SSID)", Toast.LENGTH_SHORT).show()
+            return
+        }
+        if (!bound || service == null) {
+            Toast.makeText(this, "Start streaming first so glasses are connected", Toast.LENGTH_SHORT).show()
+            return
+        }
+        service!!.sendWifiCreds(ssid, pass, true)
+        Toast.makeText(this, "Sent to glasses — they will enable Wi‑Fi and connect for internet", Toast.LENGTH_LONG).show()
     }
 
     override fun onResume() {
