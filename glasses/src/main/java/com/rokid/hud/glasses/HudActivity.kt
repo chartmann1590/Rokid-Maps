@@ -59,6 +59,7 @@ class HudActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         hudView.tileManager = tileManager
 
         hudView.onLayoutToggle = { toggleLayout() }
+        hudView.onDoubleTap = { shutdownApp() }
 
         tts = TextToSpeech(this, this)
         wifiConnector = WifiConnector(applicationContext)
@@ -156,6 +157,12 @@ class HudActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
     private fun toggleLayout() {
         hudView.state = hudView.state.toggleLayout()
+    }
+
+    private fun shutdownApp() {
+        Log.i(TAG, "Double-tap detected — shutting down app")
+        finishAndRemoveTask()
+        android.os.Process.killProcess(android.os.Process.myPid())
     }
 
     private fun installReceivedApk(file: File) {

@@ -3,6 +3,7 @@ package com.rokid.hud.glasses
 import android.content.Context
 import android.graphics.*
 import android.util.AttributeSet
+import android.view.GestureDetector
 import android.view.MotionEvent
 import android.view.View
 import com.rokid.hud.shared.protocol.Waypoint
@@ -76,13 +77,22 @@ class HudView @JvmOverloads constructor(
 
     var tileManager: TileManager? = null
     var onLayoutToggle: (() -> Unit)? = null
+    var onDoubleTap: (() -> Unit)? = null
 
-    override fun onTouchEvent(event: MotionEvent): Boolean {
-        if (event.action == MotionEvent.ACTION_DOWN) {
+    private val gestureDetector = GestureDetector(context, object : GestureDetector.SimpleOnGestureListener() {
+        override fun onSingleTapConfirmed(e: MotionEvent): Boolean {
             onLayoutToggle?.invoke()
             return true
         }
-        return super.onTouchEvent(event)
+        override fun onDoubleTap(e: MotionEvent): Boolean {
+            onDoubleTap?.invoke()
+            return true
+        }
+        override fun onDown(e: MotionEvent): Boolean = true
+    })
+
+    override fun onTouchEvent(event: MotionEvent): Boolean {
+        return gestureDetector.onTouchEvent(event) || super.onTouchEvent(event)
     }
 
     override fun onDraw(canvas: Canvas) {
