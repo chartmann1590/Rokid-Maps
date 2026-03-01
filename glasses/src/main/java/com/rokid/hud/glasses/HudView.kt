@@ -426,11 +426,7 @@ class HudView @JvmOverloads constructor(
         x += p.measureText(wifiLabel) + 10f
 
         if (state.batteryLevel >= 0) {
-            p.color = when {
-                state.batteryLevel <= 15 -> Color.parseColor("#FF4444")
-                state.batteryLevel <= 30 -> Color.parseColor("#FFB300")
-                else -> hudGreen
-            }
+            p.color = hudGreen
             val batLabel = "BAT:${state.batteryLevel}%"
             canvas.drawText(batLabel, x, y, p)
         }

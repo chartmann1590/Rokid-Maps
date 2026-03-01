@@ -73,7 +73,11 @@ class HudActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             context = this,
             onStateUpdate = { newState ->
                 runOnUiThread {
-                    hudView.state = newState
+                    // Preserve locally-sourced fields that BT state doesn't carry
+                    hudView.state = newState.copy(
+                        batteryLevel = hudView.state.batteryLevel,
+                        wifiConnected = hudView.state.wifiConnected
+                    )
                     tileManager.onTileRequestViaProxy = if (newState.btConnected) {
                         { z, x, y, id -> btClient.sendTileRequest(z, x, y, id) }
                     } else null

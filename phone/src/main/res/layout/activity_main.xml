@@ -353,7 +353,7 @@
                 <ListView
                     android:id="@+id/navFullStepsList"
                     android:layout_width="match_parent"
-                    android:layout_height="180dp"
+                    android:layout_height="wrap_content"
                     android:background="#1B2E1B"
                     android:divider="#2E5C2E"
                     android:dividerHeight="1dp" />
