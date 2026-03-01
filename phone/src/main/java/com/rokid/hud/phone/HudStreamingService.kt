@@ -91,15 +91,25 @@ class HudStreamingService : Service() {
 
     private fun acquireWakeLock() {
         if (wakeLock?.isHeld == true) return
-        val pm = getSystemService(Context.POWER_SERVICE) as? PowerManager ?: return
-        wakeLock = pm.newWakeLock(
-            PowerManager.PARTIAL_WAKE_LOCK,
-            "RokidHudMaps::Streaming"
-        ).apply {
-            setReferenceCounted(false)
-            acquire(10 * 60 * 60 * 1000L) // 10 hours max; released in onDestroy
+        val pm = getSystemService(Context.POWER_SERVICE) as? PowerManager
+        if (pm == null) {
+            Log.e(TAG, "PowerManager null — WakeLock not acquired")
+            return
         }
-        Log.i(TAG, "WakeLock acquired so maps keep updating when screen is off")
+        val tag = "${packageName}:streaming"
+        wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, tag).apply {
+            setReferenceCounted(false)
+            try {
+                acquire() // Hold until release() in onDestroy — keeps CPU running when screen off
+            } catch (e: Exception) {
+                Log.e(TAG, "WakeLock acquire failed: ${e.message}")
+            }
+        }
+        if (wakeLock?.isHeld == true) {
+            Log.i(TAG, "WakeLock acquired — maps keep updating when screen is off")
+        } else {
+            Log.e(TAG, "WakeLock not held after acquire")
+        }
     }
 
     override fun onDestroy() {
@@ -156,8 +166,8 @@ class HudStreamingService : Service() {
 
     fun getLastLocation(): Pair<Double, Double> = Pair(lastLat, lastLng)
 
-    fun sendSettings(ttsEnabled: Boolean, useImperial: Boolean = false) {
-        val msg = SettingsMessage(ttsEnabled, useImperial)
+    fun sendSettings(ttsEnabled: Boolean, useImperial: Boolean = false, useMiniMap: Boolean = false) {
+        val msg = SettingsMessage(ttsEnabled, useImperial, useMiniMap)
         cachedSettings = msg
         broadcast(ProtocolCodec.encodeSettings(msg))
     }

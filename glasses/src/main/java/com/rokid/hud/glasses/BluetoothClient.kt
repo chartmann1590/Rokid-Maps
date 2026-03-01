@@ -189,9 +189,11 @@ class BluetoothClient(
                 )
             }
             is ParsedMessage.Settings -> {
+                val layoutMode = if (parsed.msg.useMiniMap) MapLayoutMode.MINI_BOTTOM else MapLayoutMode.FULL_SCREEN
                 currentState = currentState.copy(
                     ttsEnabled = parsed.msg.ttsEnabled,
-                    useImperial = parsed.msg.useImperial
+                    useImperial = parsed.msg.useImperial,
+                    layoutMode = layoutMode
                 )
             }
             is ParsedMessage.WifiCreds -> {

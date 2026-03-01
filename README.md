@@ -9,21 +9,21 @@ Dual-app Android project: **phone** streams GPS, turn-by-turn navigation, and no
 │         Phone App               │ ◄─────────────────────► │        Glasses App              │
 │  • GPS @ 1Hz                    │   JSON-per-line        │  • Live map (CartoDB dark)      │
 │  • OSRM routing (free, no key)  │   protocol             │  • Turn-by-turn + distance      │
-│  • Nominatim search             │                        │  • Route line + compass         │
-│  • BT SPP server + A2DP audio   │   Wi‑Fi creds (opt.)   │  • Wi‑Fi auto-connect (tiles)   │
-│  • Wi‑Fi Direct hotspot         │ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─► │  • BT/Wi‑Fi status, 2 layouts  │
-│  • TTS → Bluetooth audio        │                        │  • Notifications                │
-│  • Notification relay           │                        │                                │
+│  • Nominatim search             │   + tile proxy         │  • Route line + compass         │
+│  • BT SPP server + A2DP audio   │   + APK update         │  • Layouts: full / corner / mini│
+│  • Map + directions when nav    │   + settings           │  • Wi‑Fi (optional); tile proxy│
+│  • TTS → Bluetooth audio        │                        │  • Notifications (full layout)  │
+│  • WakeLock when streaming      │                        │  • Update app from phone or ADB │
 └─────────────────────────────────┘                        └─────────────────────────────────┘
 ```
 
 ## Modules
 
-| Module   | Package                  | Description                                      |
-|----------|--------------------------|--------------------------------------------------|
-| `shared` | `com.rokid.hud.shared`    | Protocol (state, route, step, settings, wifi)   |
-| `phone`  | `com.rokid.hud.phone`    | Search, routing, streaming, Wi‑Fi share, TTS    |
-| `glasses`| `com.rokid.hud.glasses`  | HUD map, directions, Wi‑Fi connector, BT client |
+| Module   | Package                  | Description                                                |
+|----------|--------------------------|------------------------------------------------------------|
+| `shared` | `com.rokid.hud.shared`   | Protocol (state, route, step, settings, wifi, tiles, APK) |
+| `phone`  | `com.rokid.hud.phone`    | Search, routing, streaming, map when nav, Wi‑Fi, TTS, update glasses |
+| `glasses`| `com.rokid.hud.glasses`  | HUD map, directions, Wi‑Fi connector, BT client, install APK |
 
 ## Features
 
@@ -31,21 +31,26 @@ Dual-app Android project: **phone** streams GPS, turn-by-turn navigation, and no
 
 - **Search** — Nominatim (OpenStreetMap), no API key
 - **Turn-by-turn** — OSRM routing; start/stop navigation; re-route on deviation
+- **Map when navigating** — OSMDroid map and live directions shown on phone only while navigating; hidden when not
 - **Streaming** — Start streaming to start BT SPP server; glasses auto-connect when paired
 - **Pair glasses** — Bluetooth device scan; bond and select device for SPP
 - **Saved places** — Save current destination; view and pick from saved list
 - **Voice directions (TTS)** — Reads instructions aloud; routes audio to glasses via **Bluetooth A2DP** (enable in settings and ensure BT audio is connected)
-- **Wi‑Fi Direct** — Creates hotspot and sends SSID/password to glasses so they can load map tiles
 - **Units** — Imperial (miles/feet) or metric (km/m)
+- **Mini map on glasses** — Toggle in settings; when on, glasses show 25% map at bottom with direction and distance only (no notifications area)
+- **Wi‑Fi Direct** — Creates hotspot and sends SSID/password to glasses; use Mobile Hotspot section to share internet for tiles
+- **Update glasses app** — Send glasses APK over Bluetooth from phone; install on glasses without ADB (manual ADB install still supported)
+- **Keep running when screen off** — WakeLock and optional battery optimization exemption so maps keep updating on glasses when the phone screen times out
 - **Notifications** — Forward notifications to glasses (Notification Access permission)
 
 ### Glasses app
 
-- **Live map** — CartoDB Dark Matter tiles; green tint; rotates with heading
+- **Live map** — CartoDB Dark Matter tiles; green tint; rotates with heading; tiles via BT proxy from phone when no Wi‑Fi
 - **Route** — Current step, distance, route line; “You have arrived!” on destination
 - **Status** — BT and Wi‑Fi connection indicators
-- **Layouts** — Tap to switch FULL (map 72%) / MINI (small map corner)
-- **Wi‑Fi** — Receives creds over BT; enables Wi‑Fi and connects (needs `WRITE_SECURE_SETTINGS` granted via ADB on some devices)
+- **Layouts** — **Full**: map ~72%, directions + notifications below. **Corner**: tap to get small map corner + text. **Mini** (from phone toggle): 25% map at bottom, direction + distance at bottom, no notifications
+- **Wi‑Fi** — Receives creds over BT; enables Wi‑Fi and connects (needs `WRITE_SECURE_SETTINGS` via ADB on some devices)
+- **Install APK** — Can receive and install glasses APK sent from phone (FileProvider + system installer)
 
 ## Building
 
@@ -84,7 +89,9 @@ rokid.access.key=YOUR_ACCESS_KEY
 
 ```bash
 # From project root (e.g. H:\rokid-maps)
-.\gradlew.bat :phone:assembleDebug :glasses:assembleDebug
+.\gradlew assembleDebug
+# or explicitly:
+.\gradlew :phone:assembleDebug :glasses:assembleDebug
 ```
 
 Outputs:
@@ -104,14 +111,22 @@ Re-run after reinstalling the glasses APK if needed.
 
 ## Protocol (JSON per line over Bluetooth SPP)
 
-| Type        | Purpose                          |
-|------------|-----------------------------------|
-| `state`    | lat, lng, bearing, speed, accuracy |
-| `route`    | waypoints, totalDistance, totalDuration |
-| `step`     | instruction, maneuver, distance   |
-| `settings` | ttsEnabled, useImperial           |
-| `wifi_creds` | ssid, passphrase, enabled       |
-| `notification` | title, text, packageName, timeMs |
+| Type        | Purpose                                          |
+|-------------|---------------------------------------------------|
+| `state`     | lat, lng, bearing, speed, accuracy                 |
+| `route`     | waypoints, totalDistance, totalDuration           |
+| `step`      | instruction, maneuver, distance                   |
+| `settings`  | ttsEnabled, useImperial, useMiniMap               |
+| `wifi_creds`| ssid, passphrase, enabled                         |
+| `tile_req`  | glasses request tile (z, x, y, id)                 |
+| `tile_resp` | phone sends tile data (id, base64)                 |
+| `apk_start` / `apk_chunk` / `apk_end` | phone sends glasses APK in chunks |
+| `notification` | title, text, packageName, timeMs               |
+
+## Installing
+
+- **Phone**: Install `phone/build/outputs/apk/debug/phone-debug.apk` on your Android phone.
+- **Glasses**: Install `glasses/build/outputs/apk/debug/glasses-debug.apk` via ADB (e.g. `adb install -r glasses-debug.apk`) or use the phone app’s **Update app** to send the APK over Bluetooth and install on the glasses.
 
 ## License
 

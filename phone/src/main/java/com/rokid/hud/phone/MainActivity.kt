@@ -8,6 +8,7 @@ import android.content.Intent
 import android.content.ServiceConnection
 import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.PowerManager
 import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
@@ -41,6 +42,7 @@ class MainActivity : AppCompatActivity() {
         private const val RC_PICK_APK = 102
         private const val PREF_TTS = "tts_enabled"
         private const val PREF_IMPERIAL = "use_imperial"
+        private const val PREF_MINI_MAP = "use_mini_map"
         private const val PREFS_GLASSES = "rokid_glasses"
     }
 
@@ -75,6 +77,7 @@ class MainActivity : AppCompatActivity() {
     // Settings
     private lateinit var switchUnits: Switch
     private lateinit var switchTts: Switch
+    private lateinit var switchMiniMap: Switch
     private lateinit var switchWifiShare: Switch
     private lateinit var wifiShareStatus: TextView
     private lateinit var wifiInfoCard: LinearLayout
@@ -208,6 +211,7 @@ class MainActivity : AppCompatActivity() {
 
         switchUnits = findViewById(R.id.switchUnits)
         switchTts = findViewById(R.id.switchTts)
+        switchMiniMap = findViewById(R.id.switchMiniMap)
         switchWifiShare = findViewById(R.id.switchWifiShare)
         wifiShareStatus = findViewById(R.id.wifiShareStatus)
         wifiInfoCard = findViewById(R.id.wifiInfoCard)
@@ -222,6 +226,7 @@ class MainActivity : AppCompatActivity() {
 
         switchTts.isChecked = getPreferences(MODE_PRIVATE).getBoolean(PREF_TTS, false)
         switchUnits.isChecked = getPreferences(MODE_PRIVATE).getBoolean(PREF_IMPERIAL, false)
+        switchMiniMap.isChecked = getPreferences(MODE_PRIVATE).getBoolean(PREF_MINI_MAP, false)
     }
 
     private fun setupWifiManager() {
@@ -257,6 +262,11 @@ class MainActivity : AppCompatActivity() {
 
         switchUnits.setOnCheckedChangeListener { _, isChecked ->
             getPreferences(MODE_PRIVATE).edit().putBoolean(PREF_IMPERIAL, isChecked).apply()
+            sendCurrentSettings()
+        }
+
+        switchMiniMap.setOnCheckedChangeListener { _, isChecked ->
+            getPreferences(MODE_PRIVATE).edit().putBoolean(PREF_MINI_MAP, isChecked).apply()
             sendCurrentSettings()
         }
 
@@ -673,6 +683,27 @@ class MainActivity : AppCompatActivity() {
         updateStreamingUi()
         statusText.text = "Streaming started — search a destination"
         btAudioRouter.connectAudio()
+        promptBatteryOptimizationIfNeeded()
+    }
+
+    private fun promptBatteryOptimizationIfNeeded() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return
+        val pm = getSystemService(Context.POWER_SERVICE) as? PowerManager ?: return
+        if (pm.isIgnoringBatteryOptimizations(packageName)) return
+        AlertDialog.Builder(this)
+            .setTitle("Keep running when screen is off")
+            .setMessage("To keep maps and directions updating on your glasses when the phone screen turns off, allow this app to run in the background. Tap \"Allow\" below and turn off battery optimization for this app.")
+            .setPositiveButton("Allow") { _, _ ->
+                try {
+                    val i = Intent().apply {
+                        action = Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS
+                        data = Uri.parse("package:$packageName")
+                    }
+                    startActivity(i)
+                } catch (_: Exception) {}
+            }
+            .setNegativeButton("Not now", null)
+            .show()
     }
 
     // ── Misc ───────────────────────────────────────────────────────────────
@@ -701,7 +732,8 @@ class MainActivity : AppCompatActivity() {
         val prefs = getPreferences(MODE_PRIVATE)
         service?.sendSettings(
             ttsEnabled = prefs.getBoolean(PREF_TTS, false),
-            useImperial = prefs.getBoolean(PREF_IMPERIAL, false)
+            useImperial = prefs.getBoolean(PREF_IMPERIAL, false),
+            useMiniMap = prefs.getBoolean(PREF_MINI_MAP, false)
         )
     }
 

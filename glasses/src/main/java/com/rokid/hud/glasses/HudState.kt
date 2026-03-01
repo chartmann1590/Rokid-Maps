@@ -4,7 +4,9 @@ import com.rokid.hud.shared.protocol.Waypoint
 
 enum class MapLayoutMode {
     FULL_SCREEN,
-    SMALL_CORNER
+    SMALL_CORNER,
+    /** Phone-controlled: 25% map at bottom, direction+distance at bottom, no notifications */
+    MINI_BOTTOM
 }
 
 data class NotificationItem(
@@ -46,6 +48,7 @@ data class HudState(
         layoutMode = when (layoutMode) {
             MapLayoutMode.FULL_SCREEN -> MapLayoutMode.SMALL_CORNER
             MapLayoutMode.SMALL_CORNER -> MapLayoutMode.FULL_SCREEN
+            MapLayoutMode.MINI_BOTTOM -> MapLayoutMode.FULL_SCREEN
         }
     )
 }

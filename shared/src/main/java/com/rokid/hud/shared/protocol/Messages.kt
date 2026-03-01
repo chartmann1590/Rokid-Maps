@@ -34,7 +34,8 @@ data class NotificationMessage(
 
 data class SettingsMessage(
     val ttsEnabled: Boolean,
-    val useImperial: Boolean = false
+    val useImperial: Boolean = false,
+    val useMiniMap: Boolean = false
 )
 
 data class WifiCredsMessage(

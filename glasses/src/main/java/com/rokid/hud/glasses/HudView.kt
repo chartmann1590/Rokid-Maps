@@ -94,6 +94,7 @@ class HudView @JvmOverloads constructor(
         when (state.layoutMode) {
             MapLayoutMode.FULL_SCREEN -> drawFullScreenLayout(canvas, w, h)
             MapLayoutMode.SMALL_CORNER -> drawSmallCornerLayout(canvas, w, h)
+            MapLayoutMode.MINI_BOTTOM -> drawMiniBottomLayout(canvas, w, h)
         }
         drawStatusBar(canvas, w)
         drawModeIndicator(canvas, w)
@@ -112,6 +113,20 @@ class HudView @JvmOverloads constructor(
         drawDirections(canvas, pad, textTop, w - 2 * pad)
         val dirH = 44f
         drawNotifications(canvas, pad, textTop + dirH, w - 2 * pad, h - textTop - dirH - pad)
+    }
+
+    // ── Mini bottom (phone toggle): map 25% at bottom, direction+distance at bottom, no notifications ─
+
+    private fun drawMiniBottomLayout(canvas: Canvas, w: Float, h: Float) {
+        val dirStripH = 32f
+        val mapHeight = h * 0.25f - dirStripH
+        val mapTop = h - h * 0.25f
+        val pad = 6f
+        drawLiveMap(canvas, pad, mapTop + pad, w - 2 * pad, mapHeight - pad)
+        canvas.drawRect(pad, mapTop + pad, w - pad, mapTop + mapHeight, mapBorderPaint)
+        drawCompass(canvas, w - 32f, mapTop + 20f, 20f)
+        val dirTop = h - dirStripH - 4f
+        drawDirections(canvas, pad, dirTop, w - 2 * pad)
     }
 
     // ── Small-corner: text left 62%, map bottom-right 38% ─────────────────
@@ -327,7 +342,8 @@ class HudView @JvmOverloads constructor(
     private fun drawModeIndicator(canvas: Canvas, w: Float) {
         val label = when (state.layoutMode) {
             MapLayoutMode.FULL_SCREEN -> "[ FULL ]"
-            MapLayoutMode.SMALL_CORNER -> "[ MINI ]"
+            MapLayoutMode.SMALL_CORNER -> "[ CORNER ]"
+            MapLayoutMode.MINI_BOTTOM -> "[ MINI ]"
         }
         val p = Paint(smallTextPaint).apply { textSize = 11f; textAlign = Paint.Align.RIGHT }
         canvas.drawText(label, w - 8f, 14f, p)
