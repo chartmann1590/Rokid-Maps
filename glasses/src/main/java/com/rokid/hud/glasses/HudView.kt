@@ -95,6 +95,7 @@ class HudView @JvmOverloads constructor(
             MapLayoutMode.FULL_SCREEN -> drawFullScreenLayout(canvas, w, h)
             MapLayoutMode.SMALL_CORNER -> drawSmallCornerLayout(canvas, w, h)
             MapLayoutMode.MINI_BOTTOM -> drawMiniBottomLayout(canvas, w, h)
+            MapLayoutMode.MINI_SPLIT -> drawMiniSplitLayout(canvas, w, h)
         }
         drawStatusBar(canvas, w)
         drawModeIndicator(canvas, w)
@@ -127,6 +128,56 @@ class HudView @JvmOverloads constructor(
         drawCompass(canvas, w - 32f, mapTop + 20f, 20f)
         val dirTop = h - dirStripH - 4f
         drawDirections(canvas, pad, dirTop, w - 2 * pad)
+    }
+
+    // ── Mini split: bottom 25% — map left, directions right ───────────────
+
+    private fun drawMiniSplitLayout(canvas: Canvas, w: Float, h: Float) {
+        val stripH = h * 0.25f
+        val stripTop = h - stripH
+        val pad = 6f
+        val halfW = w / 2f
+
+        // Left half: map
+        drawLiveMap(canvas, pad, stripTop + pad, halfW - 2 * pad, stripH - 2 * pad)
+        canvas.drawRect(pad, stripTop + pad, halfW - pad, stripTop + stripH - pad, mapBorderPaint)
+        drawCompass(canvas, halfW - pad - 20f, stripTop + pad + 20f, 16f)
+
+        // Right half: directions
+        val textLeft = halfW + pad
+        val textW = halfW - 2 * pad
+        val centerY = stripTop + stripH / 2f
+
+        if (state.instruction.isBlank()) {
+            val p = Paint(textPaint).apply { textSize = 16f }
+            canvas.drawText("Waiting for nav...", textLeft, centerY + 6f, p)
+        } else {
+            val isArrived = state.maneuver.contains("arrive", true) && state.stepDistance <= 0.0
+            if (isArrived) {
+                val checkPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                    color = hudGreen; typeface = Typeface.MONOSPACE; textSize = 22f
+                }
+                val arrivedPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                    color = Color.WHITE; typeface = Typeface.create(Typeface.MONOSPACE, Typeface.BOLD); textSize = 16f
+                }
+                canvas.drawText("\u2713", textLeft, centerY - 4f, checkPaint)
+                canvas.drawText("Arrived!", textLeft + 28f, centerY - 4f, arrivedPaint)
+            } else {
+                val sym = maneuverToArrow(state.maneuver)
+                val dist = formatDistance(state.stepDistance)
+
+                // Maneuver arrow + distance
+                val arrowPaintL = Paint(textPaint).apply { textSize = 28f }
+                val distPaintL = Paint(textPaint).apply { textSize = 20f }
+                canvas.drawText(sym, textLeft, centerY - 6f, arrowPaintL)
+                canvas.drawText(dist, textLeft + 36f, centerY - 6f, distPaintL)
+
+                // Instruction text (wrapped to fit)
+                val instrPaint = Paint(smallTextPaint).apply { textSize = 14f; color = Color.parseColor("#AAFFAA") }
+                val instrTrunc = truncateText(state.instruction, instrPaint, textW)
+                canvas.drawText(instrTrunc, textLeft, centerY + 16f, instrPaint)
+            }
+        }
     }
 
     // ── Small-corner: text left 62%, map bottom-right 38% ─────────────────
@@ -343,7 +394,8 @@ class HudView @JvmOverloads constructor(
         val label = when (state.layoutMode) {
             MapLayoutMode.FULL_SCREEN -> "[ FULL ]"
             MapLayoutMode.SMALL_CORNER -> "[ CORNER ]"
-            MapLayoutMode.MINI_BOTTOM -> "[ MINI ]"
+            MapLayoutMode.MINI_BOTTOM -> "[ STRIP ]"
+            MapLayoutMode.MINI_SPLIT -> "[ SPLIT ]"
         }
         val p = Paint(smallTextPaint).apply { textSize = 11f; textAlign = Paint.Align.RIGHT }
         canvas.drawText(label, w - 8f, 14f, p)

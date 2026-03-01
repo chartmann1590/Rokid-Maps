@@ -20,6 +20,7 @@ object ProtocolConstants {
     const val FIELD_TTS_ENABLED = "ttsEnabled"
     const val FIELD_USE_IMPERIAL = "useImperial"
     const val FIELD_USE_MINI_MAP = "useMiniMap"
+    const val FIELD_MINI_MAP_STYLE = "miniMapStyle"
     const val FIELD_WIFI_SSID = "wifiSsid"
     const val FIELD_WIFI_PASS = "wifiPass"
     const val FIELD_WIFI_ENABLED = "wifiEnabled"

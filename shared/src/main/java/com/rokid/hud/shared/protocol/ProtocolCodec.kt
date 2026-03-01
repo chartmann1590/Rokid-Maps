@@ -63,6 +63,7 @@ object ProtocolCodec {
         put(ProtocolConstants.FIELD_TTS_ENABLED, msg.ttsEnabled)
         put(ProtocolConstants.FIELD_USE_IMPERIAL, msg.useImperial)
         put(ProtocolConstants.FIELD_USE_MINI_MAP, msg.useMiniMap)
+        put(ProtocolConstants.FIELD_MINI_MAP_STYLE, msg.miniMapStyle)
     }.toString()
 
     fun encodeWifiCreds(msg: WifiCredsMessage): String = JSONObject().apply {
@@ -151,7 +152,8 @@ object ProtocolCodec {
                     SettingsMessage(
                         ttsEnabled = json.optBoolean(ProtocolConstants.FIELD_TTS_ENABLED, false),
                         useImperial = json.optBoolean(ProtocolConstants.FIELD_USE_IMPERIAL, false),
-                        useMiniMap = json.optBoolean(ProtocolConstants.FIELD_USE_MINI_MAP, false)
+                        useMiniMap = json.optBoolean(ProtocolConstants.FIELD_USE_MINI_MAP, false),
+                        miniMapStyle = json.optString(ProtocolConstants.FIELD_MINI_MAP_STYLE, "strip")
                     )
                 )
                 ProtocolConstants.MessageType.WIFI_CREDS -> ParsedMessage.WifiCreds(

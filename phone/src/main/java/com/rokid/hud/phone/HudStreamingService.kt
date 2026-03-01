@@ -169,8 +169,8 @@ class HudStreamingService : Service() {
 
     fun getLastLocation(): Pair<Double, Double> = Pair(lastLat, lastLng)
 
-    fun sendSettings(ttsEnabled: Boolean, useImperial: Boolean = false, useMiniMap: Boolean = false) {
-        val msg = SettingsMessage(ttsEnabled, useImperial, useMiniMap)
+    fun sendSettings(ttsEnabled: Boolean, useImperial: Boolean = false, useMiniMap: Boolean = false, miniMapStyle: String = "strip") {
+        val msg = SettingsMessage(ttsEnabled, useImperial, useMiniMap, miniMapStyle)
         cachedSettings = msg
         broadcast(ProtocolCodec.encodeSettings(msg))
     }

@@ -43,6 +43,7 @@ class MainActivity : AppCompatActivity() {
         private const val PREF_TTS = "tts_enabled"
         private const val PREF_IMPERIAL = "use_imperial"
         private const val PREF_MINI_MAP = "use_mini_map"
+        private const val PREF_MINI_MAP_STYLE = "mini_map_style"
         private const val PREF_STREAM_NOTIFICATIONS = "stream_notifications"
         private const val PREF_SHOW_FULL_ROUTE_STEPS = "show_full_route_steps"
         private const val PREFS_GLASSES = "rokid_glasses"
@@ -84,6 +85,9 @@ class MainActivity : AppCompatActivity() {
     private lateinit var switchUnits: Switch
     private lateinit var switchTts: Switch
     private lateinit var switchMiniMap: Switch
+    private lateinit var miniMapStyleGroup: RadioGroup
+    private lateinit var radioStrip: RadioButton
+    private lateinit var radioSplit: RadioButton
     private lateinit var switchWifiShare: Switch
     private lateinit var wifiShareStatus: TextView
     private lateinit var wifiInfoCard: LinearLayout
@@ -225,6 +229,9 @@ class MainActivity : AppCompatActivity() {
         switchUnits = findViewById(R.id.switchUnits)
         switchTts = findViewById(R.id.switchTts)
         switchMiniMap = findViewById(R.id.switchMiniMap)
+        miniMapStyleGroup = findViewById(R.id.miniMapStyleGroup)
+        radioStrip = findViewById(R.id.radioStrip)
+        radioSplit = findViewById(R.id.radioSplit)
         switchWifiShare = findViewById(R.id.switchWifiShare)
         wifiShareStatus = findViewById(R.id.wifiShareStatus)
         wifiInfoCard = findViewById(R.id.wifiInfoCard)
@@ -241,6 +248,9 @@ class MainActivity : AppCompatActivity() {
         switchTts.isChecked = getPreferences(MODE_PRIVATE).getBoolean(PREF_TTS, false)
         switchUnits.isChecked = getPreferences(MODE_PRIVATE).getBoolean(PREF_IMPERIAL, false)
         switchMiniMap.isChecked = getPreferences(MODE_PRIVATE).getBoolean(PREF_MINI_MAP, false)
+        val savedStyle = getPreferences(MODE_PRIVATE).getString(PREF_MINI_MAP_STYLE, "strip")
+        if (savedStyle == "split") radioSplit.isChecked = true else radioStrip.isChecked = true
+        miniMapStyleGroup.visibility = if (switchMiniMap.isChecked) View.VISIBLE else View.GONE
         switchStreamNotifications.isChecked = getSharedPreferences(PREFS_HUD, MODE_PRIVATE).getBoolean(PREF_STREAM_NOTIFICATIONS, true)
     }
 
@@ -288,6 +298,13 @@ class MainActivity : AppCompatActivity() {
 
         switchMiniMap.setOnCheckedChangeListener { _, isChecked ->
             getPreferences(MODE_PRIVATE).edit().putBoolean(PREF_MINI_MAP, isChecked).apply()
+            miniMapStyleGroup.visibility = if (isChecked) View.VISIBLE else View.GONE
+            sendCurrentSettings()
+        }
+
+        miniMapStyleGroup.setOnCheckedChangeListener { _, checkedId ->
+            val style = if (checkedId == R.id.radioSplit) "split" else "strip"
+            getPreferences(MODE_PRIVATE).edit().putString(PREF_MINI_MAP_STYLE, style).apply()
             sendCurrentSettings()
         }
 
@@ -770,7 +787,8 @@ class MainActivity : AppCompatActivity() {
         service?.sendSettings(
             ttsEnabled = prefs.getBoolean(PREF_TTS, false),
             useImperial = prefs.getBoolean(PREF_IMPERIAL, false),
-            useMiniMap = prefs.getBoolean(PREF_MINI_MAP, false)
+            useMiniMap = prefs.getBoolean(PREF_MINI_MAP, false),
+            miniMapStyle = prefs.getString(PREF_MINI_MAP_STYLE, "strip") ?: "strip"
         )
     }
 

@@ -473,14 +473,14 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Mini map on glasses"
+                        android:text="Compact HUD on glasses"
                         android:textColor="#E0E0E0"
                         android:textSize="15sp" />
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Small map (25%) at bottom with direction &amp; distance only"
+                        android:text="Use bottom 25% of the screen instead of full map"
                         android:textColor="#757575"
                         android:textSize="12sp"
                         android:layout_marginTop="2dp" />
@@ -493,6 +493,37 @@
                     android:thumbTint="#00E676"
                     android:trackTint="#424242" />
             </LinearLayout>
+
+            <!-- Mini map style picker (shown when compact HUD is on) -->
+            <RadioGroup
+                android:id="@+id/miniMapStyleGroup"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingStart="16dp"
+                android:paddingEnd="8dp"
+                android:paddingBottom="8dp"
+                android:visibility="gone">
+
+                <RadioButton
+                    android:id="@+id/radioStrip"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Strip — map across the bottom, directions below"
+                    android:textColor="#BDBDBD"
+                    android:textSize="13sp"
+                    android:buttonTint="#00E676"
+                    android:checked="true" />
+
+                <RadioButton
+                    android:id="@+id/radioSplit"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Split — map on left, directions on right"
+                    android:textColor="#BDBDBD"
+                    android:textSize="13sp"
+                    android:buttonTint="#00E676" />
+            </RadioGroup>
 
             <View
                 android:layout_width="match_parent"

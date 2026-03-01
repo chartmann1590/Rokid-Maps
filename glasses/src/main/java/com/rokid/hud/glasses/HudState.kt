@@ -5,8 +5,10 @@ import com.rokid.hud.shared.protocol.Waypoint
 enum class MapLayoutMode {
     FULL_SCREEN,
     SMALL_CORNER,
-    /** Phone-controlled: 25% map at bottom, direction+distance at bottom, no notifications */
-    MINI_BOTTOM
+    /** Phone-controlled: 25% map strip at bottom, direction+distance text, no notifications */
+    MINI_BOTTOM,
+    /** Phone-controlled: bottom 25% split — map on left, directions on right, no notifications */
+    MINI_SPLIT
 }
 
 data class NotificationItem(
@@ -49,6 +51,7 @@ data class HudState(
             MapLayoutMode.FULL_SCREEN -> MapLayoutMode.SMALL_CORNER
             MapLayoutMode.SMALL_CORNER -> MapLayoutMode.FULL_SCREEN
             MapLayoutMode.MINI_BOTTOM -> MapLayoutMode.FULL_SCREEN
+            MapLayoutMode.MINI_SPLIT -> MapLayoutMode.FULL_SCREEN
         }
     )
 }
