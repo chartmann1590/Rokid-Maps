@@ -8,8 +8,11 @@ import android.content.Intent
 import android.content.ServiceConnection
 import android.content.pm.PackageManager
 import android.net.Uri
+import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.os.IBinder
 import android.provider.Settings
 import android.util.Log
@@ -22,6 +25,12 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.rokid.hud.shared.protocol.Waypoint
+import org.osmdroid.tileprovider.tilesource.TileSourceFactory
+import org.osmdroid.util.BoundingBox
+import org.osmdroid.util.GeoPoint
+import org.osmdroid.views.CustomZoomButtonsController
+import org.osmdroid.views.MapView
+import org.osmdroid.views.overlay.Polyline
 
 class MainActivity : AppCompatActivity() {
 
@@ -56,8 +65,9 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnNavigate: Button
     private lateinit var btnSavePlace: Button
 
-    // Live directions
+    // Live directions + map (shown only when navigating)
     private lateinit var navStatus: LinearLayout
+    private lateinit var navMapView: MapView
     private lateinit var navInstructionText: TextView
     private lateinit var navDistanceText: TextView
     private lateinit var btnStopNav: Button
@@ -89,6 +99,18 @@ class MainActivity : AppCompatActivity() {
     private var savedPlacesList: List<SavedPlace> = emptyList()
     private var selectedDest: SearchResult? = null
     private var showingSaved = false
+    private var currentRouteWaypoints: List<Waypoint> = emptyList()
+
+    private val navMapHandler = Handler(Looper.getMainLooper())
+    private val navMapUpdateRunnable = object : Runnable {
+        override fun run() {
+            if (!::navMapView.isInitialized || navStatus.visibility != View.VISIBLE) return
+            val (lat, lng) = service?.getLastLocation() ?: return
+            navMapView.controller.setCenter(GeoPoint(lat, lng))
+            navMapView.controller.setZoom(17.0)
+            navMapHandler.postDelayed(this, 2000L)
+        }
+    }
 
     private val connection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName?, binder: IBinder?) {
@@ -108,8 +130,10 @@ class MainActivity : AppCompatActivity() {
     private val navCallback = object : NavigationCallback {
         override fun onRouteCalculated(waypoints: List<Waypoint>, totalDistance: Double, totalDuration: Double) {
             runOnUiThread {
+                currentRouteWaypoints = waypoints
                 routeInfoText.text = "${formatDist(totalDistance)}  ·  ${formatTime(totalDuration)}"
                 showNavStatus()
+                updateNavMap()
             }
         }
         override fun onStepChanged(instruction: String, maneuver: String, distance: Double) {
@@ -176,9 +200,11 @@ class MainActivity : AppCompatActivity() {
         btnSavePlace = findViewById(R.id.btnSavePlace)
 
         navStatus = findViewById(R.id.navStatus)
+        navMapView = findViewById(R.id.navMapView)
         navInstructionText = findViewById(R.id.navInstructionText)
         navDistanceText = findViewById(R.id.navDistanceText)
         btnStopNav = findViewById(R.id.btnStopNav)
+        initNavMap()
 
         switchUnits = findViewById(R.id.switchUnits)
         switchTts = findViewById(R.id.switchTts)
@@ -309,10 +335,16 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        navMapView.onResume()
         updateGlassesStatus()
         updateNotifStatus()
         if (bound) service?.uiCallback = navCallback
         if (streaming) btAudioRouter.connectAudio()
+    }
+
+    override fun onPause() {
+        super.onPause()
+        navMapView.onPause()
     }
 
     override fun onDestroy() {
@@ -490,13 +522,44 @@ class MainActivity : AppCompatActivity() {
     private fun showNavStatus() {
         navStatus.visibility = View.VISIBLE
         btnNavigate.isEnabled = true
+        navMapHandler.postDelayed(navMapUpdateRunnable, 500L)
     }
 
     private fun stopNavigation() {
+        navMapHandler.removeCallbacks(navMapUpdateRunnable)
         service?.stopNavigation()
         navStatus.visibility = View.GONE
         navInstructionText.text = ""
         navDistanceText.text = ""
+        currentRouteWaypoints = emptyList()
+    }
+
+    private fun initNavMap() {
+        navMapView.setTileSource(TileSourceFactory.MAPNIK)
+        navMapView.zoomController.setVisibility(CustomZoomButtonsController.Visibility.NEVER)
+        navMapView.setMultiTouchControls(true)
+        navMapView.controller.setZoom(15.0)
+    }
+
+    private fun updateNavMap() {
+        if (currentRouteWaypoints.isEmpty()) return
+        navMapView.overlays.removeIf { it is Polyline }
+        val line = Polyline().apply {
+            outlinePaint.color = Color.parseColor("#00E676")
+            outlinePaint.strokeWidth = 12f
+            outlinePaint.isAntiAlias = true
+            setPoints(currentRouteWaypoints.map { GeoPoint(it.latitude, it.longitude) })
+        }
+        navMapView.overlays.add(line)
+        val (lat, lng) = service?.getLastLocation() ?: run {
+            val first = currentRouteWaypoints.first()
+            Pair(first.latitude, first.longitude)
+        }
+        navMapView.controller.setCenter(GeoPoint(lat, lng))
+        navMapView.controller.setZoom(17.0)
+        val box = BoundingBox.fromGeoPoints(currentRouteWaypoints.map { GeoPoint(it.latitude, it.longitude) })
+        navMapView.zoomToBoundingBox(box, false)
+        navMapView.invalidate()
     }
 
     // ── Wi-Fi sharing ──────────────────────────────────────────────────────

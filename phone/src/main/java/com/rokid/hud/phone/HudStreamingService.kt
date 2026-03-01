@@ -8,11 +8,13 @@ import android.app.Service
 import android.bluetooth.BluetoothManager
 import android.bluetooth.BluetoothServerSocket
 import android.bluetooth.BluetoothSocket
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.location.Location
 import android.net.Uri
 import android.os.Binder
+import android.os.PowerManager
 import android.os.Handler
 import android.os.IBinder
 import android.util.Log
@@ -68,6 +70,8 @@ class HudStreamingService : Service() {
     private var cachedSettings: SettingsMessage? = null
     private var cachedWifiCreds: WifiCredsMessage? = null
 
+    private var wakeLock: PowerManager.WakeLock? = null
+
     var navigationManager: NavigationManager? = null
     var uiCallback: NavigationCallback? = null
 
@@ -77,6 +81,7 @@ class HudStreamingService : Service() {
         startForeground(NOTIFICATION_ID, buildNotification())
         if (!running) {
             running = true
+            acquireWakeLock()
             initNavigation()
             startBluetoothServer()
             startLocationUpdates()
@@ -84,8 +89,25 @@ class HudStreamingService : Service() {
         return START_STICKY
     }
 
+    private fun acquireWakeLock() {
+        if (wakeLock?.isHeld == true) return
+        val pm = getSystemService(Context.POWER_SERVICE) as? PowerManager ?: return
+        wakeLock = pm.newWakeLock(
+            PowerManager.PARTIAL_WAKE_LOCK,
+            "RokidHudMaps::Streaming"
+        ).apply {
+            setReferenceCounted(false)
+            acquire(10 * 60 * 60 * 1000L) // 10 hours max; released in onDestroy
+        }
+        Log.i(TAG, "WakeLock acquired so maps keep updating when screen is off")
+    }
+
     override fun onDestroy() {
         running = false
+        try {
+            wakeLock?.let { if (it.isHeld) it.release() }
+        } catch (_: Exception) {}
+        wakeLock = null
         navigationManager?.stopNavigation()
         locationCallback?.let { fusedLocationClient?.removeLocationUpdates(it) }
         try { serverSocket?.close() } catch (_: Exception) {}

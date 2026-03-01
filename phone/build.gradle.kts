@@ -54,6 +54,7 @@ dependencies {
     implementation("com.google.android.material:material:1.11.0")
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
     implementation("com.google.android.gms:play-services-location:21.1.0")
+    implementation("org.osmdroid:osmdroid-android:6.1.18")
 
     // Rokid CXR-M SDK for glasses connection and device control
     implementation("com.rokid.cxr:client-m:1.0.4")

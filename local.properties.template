@@ -4,7 +4,8 @@
 # Android SDK path (required)
 sdk.dir=C\:\\Users\\YOUR_USERNAME\\AppData\\Local\\Android\\Sdk
 
-# Rokid SDK credentials (optional — for Rokid CXR SDK if you add the AAR)
-rokid.clientId=YOUR_CLIENT_ID
-rokid.clientSecret=YOUR_CLIENT_SECRET
-rokid.accessKey=YOUR_ACCESS_KEY
+# Rokid SDK credentials (optional — for Rokid CXR SDK features)
+# Get your own from Rokid; do not use or commit anyone else's.
+rokid.client.id=YOUR_CLIENT_ID
+rokid.client.secret=YOUR_CLIENT_SECRET
+rokid.access.key=YOUR_ACCESS_KEY

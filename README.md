@@ -55,20 +55,30 @@ Dual-app Android project: **phone** streams GPS, turn-by-turn navigation, and no
 - Android SDK (API 34 recommended)
 - Android Build Tools
 
+### Rokid SDK credentials (your own only)
+
+This project can use the **Rokid CXR SDK** for some optional features. You must use **your own** Rokid API credentials:
+
+- Obtain **Client ID**, **Client Secret**, and **Access Key** from Rokid (e.g. developer portal or your account).
+- Put them only in `local.properties` (see Setup below). **Never commit `local.properties`** or paste credentials into the repo.
+- This repository contains **no** real Rokid credentials; `local.properties` is in `.gitignore` and is not shipped.
+
+If you leave the Rokid fields empty, the app still runs; Bluetooth pairing uses standard Android APIs and does not require the SDK.
+
 ### Setup
 
 1. Clone the repo (or open project on **H:\rokid-maps**).
 2. Copy `local.properties.template` to `local.properties`.
-3. Set `sdk.dir` to your Android SDK path. Optionally set Rokid credentials if using the SDK AAR:
+3. Set `sdk.dir` to your Android SDK path. Optionally add **your own** Rokid credentials (see above):
 
 ```properties
 sdk.dir=C\:\\Users\\YOU\\AppData\\Local\\Android\\Sdk
-rokid.clientId=YOUR_CLIENT_ID
-rokid.clientSecret=YOUR_CLIENT_SECRET
-rokid.accessKey=YOUR_ACCESS_KEY
+rokid.client.id=YOUR_CLIENT_ID
+rokid.client.secret=YOUR_CLIENT_SECRET
+rokid.access.key=YOUR_ACCESS_KEY
 ```
 
-**Do not commit `local.properties`** — it is in `.gitignore`.
+**Do not commit `local.properties`** — it is in `.gitignore` and may contain secrets.
 
 ### Build APKs
 

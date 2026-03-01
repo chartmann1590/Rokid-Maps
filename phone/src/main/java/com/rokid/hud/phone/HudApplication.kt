@@ -5,6 +5,7 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.os.Build
 import android.util.Log
+import org.osmdroid.config.Configuration
 
 class HudApplication : Application() {
 
@@ -15,6 +16,7 @@ class HudApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        Configuration.getInstance().load(this, getSharedPreferences("osmdroid", MODE_PRIVATE))
         createNotificationChannel()
         initRokidCxrSdk()
     }
