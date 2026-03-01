@@ -288,8 +288,9 @@
                 android:layout_width="match_parent"
                 android:layout_height="180dp"
                 android:layout_marginTop="8dp"
-                android:layout_marginBottom="12dp" />
+                android:layout_marginBottom="8dp" />
 
+            <!-- Current step (always visible) -->
             <TextView
                 android:id="@+id/navInstructionText"
                 android:layout_width="match_parent"
@@ -297,7 +298,8 @@
                 android:textColor="#FFFFFF"
                 android:textSize="22sp"
                 android:textStyle="bold"
-                android:lineSpacingExtra="2dp" />
+                android:lineSpacingExtra="2dp"
+                android:layout_marginBottom="4dp" />
 
             <TextView
                 android:id="@+id/navDistanceText"
@@ -305,7 +307,57 @@
                 android:layout_height="wrap_content"
                 android:textColor="#A5D6A7"
                 android:textSize="18sp"
-                android:layout_marginTop="4dp" />
+                android:layout_marginBottom="12dp" />
+
+            <!-- Toggle full list of steps for the whole route -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="6dp">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Show full route steps"
+                    android:textColor="#A5D6A7"
+                    android:textSize="14sp" />
+
+                <Switch
+                    android:id="@+id/switchShowFullRouteSteps"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:checked="false"
+                    android:thumbTint="#66BB6A"
+                    android:trackTint="#424242" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/navFullStepsPanel"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:visibility="gone"
+                android:layout_marginBottom="8dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="All steps (instruction \u2014 distance)"
+                    android:textColor="#81C784"
+                    android:textSize="12sp"
+                    android:layout_marginBottom="4dp" />
+
+                <ListView
+                    android:id="@+id/navFullStepsList"
+                    android:layout_width="match_parent"
+                    android:layout_height="180dp"
+                    android:background="#1B2E1B"
+                    android:divider="#2E5C2E"
+                    android:dividerHeight="1dp" />
+            </LinearLayout>
 
             <Button
                 android:id="@+id/btnStopNav"
@@ -663,6 +715,39 @@
                     android:insetTop="0dp"
                     android:insetBottom="0dp"
                     android:paddingHorizontal="16dp" />
+            </LinearLayout>
+
+            <!-- Stream notifications to glasses (enable/disable sending) -->
+            <LinearLayout style="@style/ToggleRow">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Stream notifications to glasses"
+                        android:textColor="#E0E0E0"
+                        android:textSize="15sp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Send phone notifications to glasses when they arrive"
+                        android:textColor="#757575"
+                        android:textSize="12sp"
+                        android:layout_marginTop="2dp" />
+                </LinearLayout>
+
+                <Switch
+                    android:id="@+id/switchStreamNotifications"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:thumbTint="#00E676"
+                    android:trackTint="#424242" />
             </LinearLayout>
         </LinearLayout>
 

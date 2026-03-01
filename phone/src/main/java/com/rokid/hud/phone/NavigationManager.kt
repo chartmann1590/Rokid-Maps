@@ -7,7 +7,7 @@ import com.rokid.hud.shared.protocol.Waypoint
 import kotlin.math.*
 
 interface NavigationCallback {
-    fun onRouteCalculated(waypoints: List<Waypoint>, totalDistance: Double, totalDuration: Double)
+    fun onRouteCalculated(waypoints: List<Waypoint>, totalDistance: Double, totalDuration: Double, steps: List<NavigationStep>)
     fun onStepChanged(instruction: String, maneuver: String, distance: Double)
     fun onNavigationError(message: String)
     fun onArrived()
@@ -120,7 +120,7 @@ class NavigationManager(private val callback: NavigationCallback) {
                 currentStepIndex = 0
 
                 mainHandler.post {
-                    callback.onRouteCalculated(result.waypoints, result.totalDistance, result.totalDuration)
+                    callback.onRouteCalculated(result.waypoints, result.totalDistance, result.totalDuration, result.steps)
                     if (steps.isNotEmpty()) {
                         callback.onStepChanged(steps[0].instruction, steps[0].maneuver, steps[0].distance)
                     }

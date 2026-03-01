@@ -22,8 +22,10 @@ import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import com.google.android.gms.location.*
 import com.rokid.hud.shared.protocol.*
+import java.io.ByteArrayOutputStream
 import java.io.BufferedReader
 import java.io.BufferedWriter
+import java.io.InputStream
 import java.io.InputStreamReader
 import java.io.OutputStreamWriter
 import java.net.HttpURLConnection
@@ -41,6 +43,7 @@ class HudStreamingService : Service() {
         private val SPP_UUID: UUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB")
         private const val NOTIFICATION_ID = 1
         private const val LOCATION_INTERVAL_MS = 1000L
+        private const val MAX_TILE_BYTES = 512 * 1024 // 512KB cap to avoid OOM on bad/corrupt responses
     }
 
     inner class LocalBinder : Binder() {
@@ -133,9 +136,9 @@ class HudStreamingService : Service() {
 
     private fun initNavigation() {
         navigationManager = NavigationManager(object : NavigationCallback {
-            override fun onRouteCalculated(waypoints: List<Waypoint>, totalDistance: Double, totalDuration: Double) {
+            override fun onRouteCalculated(waypoints: List<Waypoint>, totalDistance: Double, totalDuration: Double, steps: List<NavigationStep>) {
                 sendRoute(waypoints, totalDistance, totalDuration)
-                uiCallback?.onRouteCalculated(waypoints, totalDistance, totalDuration)
+                uiCallback?.onRouteCalculated(waypoints, totalDistance, totalDuration, steps)
             }
             override fun onStepChanged(instruction: String, maneuver: String, distance: Double) {
                 sendStep(instruction, maneuver, distance)
@@ -289,28 +292,51 @@ class HudStreamingService : Service() {
 
     private fun handleTileRequest(z: Int, x: Int, y: Int, id: String, writer: BufferedWriter) {
         tileExecutor.execute {
-            var data: String? = null
-            for (template in TILE_URLS) {
-                try {
-                    val url = URL(String.format(template, z, x, y))
-                    val conn = url.openConnection() as HttpURLConnection
-                    conn.setRequestProperty("User-Agent", USER_AGENT)
-                    conn.connectTimeout = 8000
-                    conn.readTimeout = 8000
-                    if (conn.responseCode == 200) {
-                        val bytes = conn.inputStream.readBytes()
+            try {
+                if (!running) return@execute
+                var data: String? = null
+                for (template in TILE_URLS) {
+                    try {
+                        val url = URL(String.format(template, z, x, y))
+                        val conn = url.openConnection() as HttpURLConnection
+                        conn.setRequestProperty("User-Agent", USER_AGENT)
+                        conn.connectTimeout = 8000
+                        conn.readTimeout = 8000
+                        if (conn.responseCode == 200) {
+                            val bytes = readBounded(conn.inputStream, MAX_TILE_BYTES)
+                            conn.disconnect()
+                            if (bytes.isNotEmpty()) {
+                                data = Base64.getEncoder().encodeToString(bytes)
+                            }
+                            break
+                        }
                         conn.disconnect()
-                        data = Base64.getEncoder().encodeToString(bytes)
-                        break
+                    } catch (e: Exception) {
+                        Log.w(TAG, "Tile fetch $id failed: ${e.message}")
                     }
-                    conn.disconnect()
-                } catch (e: Exception) {
-                    Log.w(TAG, "Tile fetch $id failed: ${e.message}")
                 }
+                if (!running) return@execute
+                if (!clients.contains(writer)) return@execute
+                val resp = ProtocolCodec.encodeTileResp(TileResponseMessage(id = id, data = data))
+                sendToClient(writer, resp)
+            } catch (t: Throwable) {
+                Log.e(TAG, "Tile handle $id error", t)
             }
-            val resp = ProtocolCodec.encodeTileResp(TileResponseMessage(id = id, data = data))
-            sendToClient(writer, resp)
         }
+    }
+
+    private fun readBounded(stream: InputStream, maxBytes: Int): ByteArray {
+        val out = ByteArrayOutputStream(maxBytes)
+        val buf = ByteArray(8192.coerceAtMost(maxBytes))
+        var total = 0
+        var n: Int
+        while (total < maxBytes) {
+            n = stream.read(buf, 0, (buf.size).coerceAtMost(maxBytes - total))
+            if (n == -1) break
+            out.write(buf, 0, n)
+            total += n
+        }
+        return out.toByteArray()
     }
 
     private fun runClientReader(session: ClientSession) {
@@ -319,20 +345,28 @@ class HudStreamingService : Service() {
                 val reader = BufferedReader(InputStreamReader(session.socket.inputStream, Charsets.UTF_8))
                 while (running) {
                     val line = reader.readLine() ?: break
-                    val parsed = ProtocolCodec.decode(line)
-                    when (parsed) {
-                        is ParsedMessage.TileReq -> handleTileRequest(
-                            parsed.msg.z, parsed.msg.x, parsed.msg.y, parsed.msg.id, session.writer
-                        )
-                        else -> { /* ignore other inbound */ }
+                    if (line.length > 1024) continue
+                    try {
+                        val parsed = ProtocolCodec.decode(line)
+                        when (parsed) {
+                            is ParsedMessage.TileReq -> handleTileRequest(
+                                parsed.msg.z, parsed.msg.x, parsed.msg.y, parsed.msg.id, session.writer
+                            )
+                            else -> { /* ignore other inbound */ }
+                        }
+                    } catch (e: Exception) {
+                        Log.w(TAG, "Client message parse failed: ${e.message}")
                     }
                 }
             } catch (e: Exception) {
                 if (running) Log.w(TAG, "Client reader ended: ${e.message}")
+            } catch (t: Throwable) {
+                Log.e(TAG, "Client reader error", t)
+            } finally {
+                try { session.socket.close() } catch (_: Exception) {}
+                clientSessions.remove(session)
+                clients.remove(session.writer)
             }
-            try { session.socket.close() } catch (_: Exception) {}
-            clientSessions.remove(session)
-            clients.remove(session.writer)
         }.start()
     }
 

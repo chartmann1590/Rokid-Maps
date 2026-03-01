@@ -43,7 +43,10 @@ class MainActivity : AppCompatActivity() {
         private const val PREF_TTS = "tts_enabled"
         private const val PREF_IMPERIAL = "use_imperial"
         private const val PREF_MINI_MAP = "use_mini_map"
+        private const val PREF_STREAM_NOTIFICATIONS = "stream_notifications"
+        private const val PREF_SHOW_FULL_ROUTE_STEPS = "show_full_route_steps"
         private const val PREFS_GLASSES = "rokid_glasses"
+        private const val PREFS_HUD = "rokid_hud_prefs"
     }
 
     private lateinit var btAudioRouter: BluetoothAudioRouter
@@ -72,6 +75,9 @@ class MainActivity : AppCompatActivity() {
     private lateinit var navMapView: MapView
     private lateinit var navInstructionText: TextView
     private lateinit var navDistanceText: TextView
+    private lateinit var navFullStepsPanel: LinearLayout
+    private lateinit var navFullStepsList: ListView
+    private lateinit var switchShowFullRouteSteps: Switch
     private lateinit var btnStopNav: Button
 
     // Settings
@@ -89,6 +95,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnSendHotspotToGlasses: Button
     private lateinit var notifStatusText: TextView
     private lateinit var btnNotifAccess: Button
+    private lateinit var switchStreamNotifications: Switch
 
     // Managers
     private lateinit var wifiShareManager: WifiShareManager
@@ -103,6 +110,7 @@ class MainActivity : AppCompatActivity() {
     private var selectedDest: SearchResult? = null
     private var showingSaved = false
     private var currentRouteWaypoints: List<Waypoint> = emptyList()
+    private var fullRouteSteps: List<NavigationStep> = emptyList()
 
     private val navMapHandler = Handler(Looper.getMainLooper())
     private val navMapUpdateRunnable = object : Runnable {
@@ -131,12 +139,14 @@ class MainActivity : AppCompatActivity() {
     }
 
     private val navCallback = object : NavigationCallback {
-        override fun onRouteCalculated(waypoints: List<Waypoint>, totalDistance: Double, totalDuration: Double) {
+        override fun onRouteCalculated(waypoints: List<Waypoint>, totalDistance: Double, totalDuration: Double, steps: List<NavigationStep>) {
             runOnUiThread {
                 currentRouteWaypoints = waypoints
+                fullRouteSteps = steps
                 routeInfoText.text = "${formatDist(totalDistance)}  ·  ${formatTime(totalDuration)}"
                 showNavStatus()
                 updateNavMap()
+                updateFullStepsList()
             }
         }
         override fun onStepChanged(instruction: String, maneuver: String, distance: Double) {
@@ -206,6 +216,9 @@ class MainActivity : AppCompatActivity() {
         navMapView = findViewById(R.id.navMapView)
         navInstructionText = findViewById(R.id.navInstructionText)
         navDistanceText = findViewById(R.id.navDistanceText)
+        navFullStepsPanel = findViewById(R.id.navFullStepsPanel)
+        navFullStepsList = findViewById(R.id.navFullStepsList)
+        switchShowFullRouteSteps = findViewById(R.id.switchShowFullRouteSteps)
         btnStopNav = findViewById(R.id.btnStopNav)
         initNavMap()
 
@@ -223,10 +236,12 @@ class MainActivity : AppCompatActivity() {
         btnSendHotspotToGlasses = findViewById(R.id.btnSendHotspotToGlasses)
         notifStatusText = findViewById(R.id.notifStatusText)
         btnNotifAccess = findViewById(R.id.btnNotifAccess)
+        switchStreamNotifications = findViewById(R.id.switchStreamNotifications)
 
         switchTts.isChecked = getPreferences(MODE_PRIVATE).getBoolean(PREF_TTS, false)
         switchUnits.isChecked = getPreferences(MODE_PRIVATE).getBoolean(PREF_IMPERIAL, false)
         switchMiniMap.isChecked = getPreferences(MODE_PRIVATE).getBoolean(PREF_MINI_MAP, false)
+        switchStreamNotifications.isChecked = getSharedPreferences(PREFS_HUD, MODE_PRIVATE).getBoolean(PREF_STREAM_NOTIFICATIONS, true)
     }
 
     private fun setupWifiManager() {
@@ -253,6 +268,12 @@ class MainActivity : AppCompatActivity() {
         btnNavigate.setOnClickListener { startNavigation() }
         btnSavePlace.setOnClickListener { saveCurrentPlace() }
         btnStopNav.setOnClickListener { stopNavigation() }
+        switchShowFullRouteSteps.isChecked = getSharedPreferences(PREFS_HUD, MODE_PRIVATE).getBoolean(PREF_SHOW_FULL_ROUTE_STEPS, false)
+        switchShowFullRouteSteps.setOnCheckedChangeListener { _, isChecked ->
+            getSharedPreferences(PREFS_HUD, MODE_PRIVATE).edit().putBoolean(PREF_SHOW_FULL_ROUTE_STEPS, isChecked).apply()
+            navFullStepsPanel.visibility = if (isChecked) View.VISIBLE else View.GONE
+            if (isChecked) updateFullStepsList()
+        }
         btnNotifAccess.setOnClickListener { openNotificationListenerSettings() }
 
         switchTts.setOnCheckedChangeListener { _, isChecked ->
@@ -268,6 +289,10 @@ class MainActivity : AppCompatActivity() {
         switchMiniMap.setOnCheckedChangeListener { _, isChecked ->
             getPreferences(MODE_PRIVATE).edit().putBoolean(PREF_MINI_MAP, isChecked).apply()
             sendCurrentSettings()
+        }
+
+        switchStreamNotifications.setOnCheckedChangeListener { _, isChecked ->
+            getSharedPreferences(PREFS_HUD, MODE_PRIVATE).edit().putBoolean(PREF_STREAM_NOTIFICATIONS, isChecked).apply()
         }
 
         switchWifiShare.setOnCheckedChangeListener { _, isChecked ->
@@ -532,6 +557,10 @@ class MainActivity : AppCompatActivity() {
     private fun showNavStatus() {
         navStatus.visibility = View.VISIBLE
         btnNavigate.isEnabled = true
+        val showFullSteps = getSharedPreferences(PREFS_HUD, MODE_PRIVATE).getBoolean(PREF_SHOW_FULL_ROUTE_STEPS, false)
+        switchShowFullRouteSteps.isChecked = showFullSteps
+        navFullStepsPanel.visibility = if (showFullSteps) View.VISIBLE else View.GONE
+        if (showFullSteps) updateFullStepsList()
         navMapHandler.postDelayed(navMapUpdateRunnable, 500L)
     }
 
@@ -542,6 +571,14 @@ class MainActivity : AppCompatActivity() {
         navInstructionText.text = ""
         navDistanceText.text = ""
         currentRouteWaypoints = emptyList()
+        fullRouteSteps = emptyList()
+    }
+
+    private fun updateFullStepsList() {
+        val items = fullRouteSteps.mapIndexed { i, step ->
+            "${i + 1}. ${step.instruction} — ${formatDist(step.distance)}"
+        }
+        navFullStepsList.adapter = ArrayAdapter(this, android.R.layout.simple_list_item_1, items)
     }
 
     private fun initNavMap() {

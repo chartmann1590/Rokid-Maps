@@ -49,6 +49,8 @@ class HudNotificationListenerService : NotificationListenerService() {
         sbn ?: return
         if (sbn.packageName == packageName) return
 
+        if (!getSharedPreferences("rokid_hud_prefs", Context.MODE_PRIVATE).getBoolean("stream_notifications", true)) return
+
         val extras = sbn.notification.extras
         val title = extras.getCharSequence("android.title")?.toString()
         val text = extras.getCharSequence("android.text")?.toString()

@@ -1,80 +1,84 @@
 # Rokid HUD Maps
 
-Dual-app Android project: **phone** streams GPS, turn-by-turn navigation, and notifications to **Rokid AR glasses** over Bluetooth. The glasses show a live map, directions, and route; TTS can play through the glasses via Bluetooth audio.
+Turn-by-turn navigation on your Rokid AR glasses, powered by your phone.
 
-## Architecture
+Your phone handles all the heavy lifting — GPS, route calculations, address search — and streams everything to your glasses over Bluetooth. You get a live map with your route drawn on it, step-by-step directions, and even your phone notifications, all floating in your field of view. No cloud services, no API keys, no subscriptions. It's all free and open-source under the hood.
+
+## How It Works
+
+There are two apps: one runs on your Android phone, the other on your Rokid glasses. They talk to each other over Bluetooth SPP (Serial Port Profile), sending JSON messages back and forth — one per line, nice and simple.
+
+The phone is the brain. It grabs your GPS location once per second, calculates routes using [OSRM](http://project-osrm.org/) (a free routing engine), and searches for addresses with [Nominatim](https://nominatim.openstreetmap.org/) (OpenStreetMap's geocoder). When you start streaming, the phone opens a Bluetooth server and waits for your glasses to connect. Once they do, everything flows automatically.
+
+The glasses are the display. They render a dark-themed map (CartoDB Dark Matter tiles with a green tint — looks great on AR glass), show your current navigation step, draw your route, and rotate the map to match the direction you're facing. If the glasses don't have Wi-Fi for downloading map tiles, the phone acts as a proxy — the glasses request tiles over Bluetooth, the phone fetches them from the internet, and sends them back.
 
 ```
-┌─────────────────────────────────┐     Bluetooth SPP      ┌─────────────────────────────────┐
-│         Phone App               │ ◄─────────────────────► │        Glasses App              │
-│  • GPS @ 1Hz                    │   JSON-per-line        │  • Live map (CartoDB dark)      │
-│  • OSRM routing (free, no key)  │   protocol             │  • Turn-by-turn + distance      │
-│  • Nominatim search             │   + tile proxy         │  • Route line + compass         │
-│  • BT SPP server + A2DP audio   │   + APK update         │  • Layouts: full / corner / mini│
-│  • Map + directions when nav    │   + settings           │  • Wi‑Fi (optional); tile proxy│
-│  • TTS → Bluetooth audio        │                        │  • Notifications (full layout)  │
-│  • WakeLock when streaming      │                        │  • Update app from phone or ADB │
-└─────────────────────────────────┘                        └─────────────────────────────────┘
+┌──────────────────────────┐    Bluetooth SPP     ┌──────────────────────────┐
+│       Phone App          │ ◄──────────────────►  │      Glasses App         │
+│                          │   JSON messages       │                          │
+│  GPS tracking @ 1Hz      │   + tile proxy        │  Live rotating map       │
+│  OSRM routing            │   + APK updates       │  Turn-by-turn HUD        │
+│  Nominatim search        │   + settings sync     │  Route line overlay      │
+│  BT server + A2DP audio  │                       │  Phone notifications     │
+│  TTS voice directions    │                       │  3 layout modes          │
+└──────────────────────────┘                       └──────────────────────────┘
 ```
 
-## Modules
+## What You Can Do
 
-| Module   | Package                  | Description                                                |
-|----------|--------------------------|------------------------------------------------------------|
-| `shared` | `com.rokid.hud.shared`   | Protocol (state, route, step, settings, wifi, tiles, APK) |
-| `phone`  | `com.rokid.hud.phone`    | Search, routing, streaming, map when nav, Wi‑Fi, TTS, update glasses |
-| `glasses`| `com.rokid.hud.glasses`  | HUD map, directions, Wi‑Fi connector, BT client, install APK |
+### On the Phone
 
-## Features
+- **Search for places** — Type an address or place name and pick from the results. Uses OpenStreetMap data, no API key needed.
+- **Get turn-by-turn directions** — Routes are calculated with OSRM. If you go off-route, it automatically recalculates. When you arrive, it tells you.
+- **See a map while navigating** — The phone shows a map and live directions while you're navigating (hides when you're not, keeps the UI clean).
+- **Save places** — Found a spot you like? Save it. Long-press to delete. Simple.
+- **Voice directions** — TTS reads out your turns and routes audio to your glasses via Bluetooth A2DP. Toggle it in settings.
+- **Forward notifications** — Your texts, emails, whatever — they show up on your glasses. Requires notification access permission.
+- **Push app updates to glasses** — Pick an APK file on your phone and send it to the glasses over Bluetooth. No need to plug in a cable or use ADB (though you still can if you want).
+- **Share internet with glasses** — Send your phone's hotspot credentials to the glasses so they can download map tiles directly instead of going through the Bluetooth proxy.
+- **Imperial or metric** — Your choice.
+- **Mini map mode** — Toggle from the phone to switch the glasses to a compact layout: small map at the bottom, just the direction and distance, no notifications.
+- **Keeps running in the background** — Uses a WakeLock so your GPS and Bluetooth keep working when the phone screen turns off. It'll ask about battery optimization so Android doesn't kill it.
 
-### Phone app
+### On the Glasses
 
-- **Search** — Nominatim (OpenStreetMap), no API key
-- **Turn-by-turn** — OSRM routing; start/stop navigation; re-route on deviation
-- **Map when navigating** — OSMDroid map and live directions shown on phone only while navigating; hidden when not
-- **Streaming** — Start streaming to start BT SPP server; glasses auto-connect when paired
-- **Pair glasses** — Bluetooth device scan; bond and select device for SPP
-- **Saved places** — Save current destination; view and pick from saved list
-- **Voice directions (TTS)** — Reads instructions aloud; routes audio to glasses via **Bluetooth A2DP** (enable in settings and ensure BT audio is connected)
-- **Units** — Imperial (miles/feet) or metric (km/m)
-- **Mini map on glasses** — Toggle in settings; when on, glasses show 25% map at bottom with direction and distance only (no notifications area)
-- **Wi‑Fi Direct** — Creates hotspot and sends SSID/password to glasses; use Mobile Hotspot section to share internet for tiles
-- **Update glasses app** — Send glasses APK over Bluetooth from phone; install on glasses without ADB (manual ADB install still supported)
-- **Keep running when screen off** — WakeLock and optional battery optimization exemption so maps keep updating on glasses when the phone screen times out
-- **Notifications** — Forward notifications to glasses (Notification Access permission)
+- **Live map** — Rotates with your heading, renders dark-themed tiles with a green HUD overlay. If there's no Wi-Fi, tiles come through the phone via Bluetooth.
+- **Navigation display** — Shows the current instruction, maneuver arrow, and distance to the next turn. Shows a checkmark and "You have arrived!" when you get there.
+- **Route line** — Your full route drawn on the map with a glowing green line.
+- **Compass** — Shows which way is north and your current bearing in degrees.
+- **Three layouts** — Tap the screen to cycle through them:
+  - **Full** — Map takes up ~72% of the screen, directions and notifications below
+  - **Corner** — Small map in the bottom-right corner, text on the left
+  - **Mini** — Compact strip at the bottom (toggled from phone settings)
+- **Phone notifications** — Scrolling list below the directions, shows title and preview text.
+- **Status indicators** — BT and Wi-Fi connection status in the top-left corner.
+- **Auto-connect Wi-Fi** — When the phone sends hotspot credentials, the glasses automatically enable Wi-Fi and connect.
 
-### Glasses app
+## Project Structure
 
-- **Live map** — CartoDB Dark Matter tiles; green tint; rotates with heading; tiles via BT proxy from phone when no Wi‑Fi
-- **Route** — Current step, distance, route line; “You have arrived!” on destination
-- **Status** — BT and Wi‑Fi connection indicators
-- **Layouts** — **Full**: map ~72%, directions + notifications below. **Corner**: tap to get small map corner + text. **Mini** (from phone toggle): 25% map at bottom, direction + distance at bottom, no notifications
-- **Wi‑Fi** — Receives creds over BT; enables Wi‑Fi and connects (needs `WRITE_SECURE_SETTINGS` via ADB on some devices)
-- **Install APK** — Can receive and install glasses APK sent from phone (FileProvider + system installer)
+```
+rokid-maps/
+├── shared/    Bluetooth protocol — message types, JSON encoding/decoding
+├── phone/     Phone app — search, routing, streaming service, BT server
+└── glasses/   Glasses app — HUD rendering, BT client, tile manager
+```
 
 ## Building
 
-### Prerequisites
+### What You Need
 
 - JDK 17+
-- Android SDK (API 34 recommended)
-- Android Build Tools
+- Android SDK (API 34)
 
-### Rokid SDK credentials (your own only)
+### Rokid SDK (Optional)
 
-This project can use the **Rokid CXR SDK** for some optional features. You must use **your own** Rokid API credentials:
-
-- Obtain **Client ID**, **Client Secret**, and **Access Key** from Rokid (e.g. developer portal or your account).
-- Put them only in `local.properties` (see Setup below). **Never commit `local.properties`** or paste credentials into the repo.
-- This repository contains **no** real Rokid credentials; `local.properties` is in `.gitignore` and is not shipped.
-
-If you leave the Rokid fields empty, the app still runs; Bluetooth pairing uses standard Android APIs and does not require the SDK.
+The app can optionally use the Rokid CXR SDK for device features. If you have Rokid developer credentials, put them in `local.properties`. If you don't, everything still works — Bluetooth pairing uses standard Android APIs.
 
 ### Setup
 
-1. Clone the repo (or open project on **H:\rokid-maps**).
-2. Copy `local.properties.template` to `local.properties`.
-3. Set `sdk.dir` to your Android SDK path. Optionally add **your own** Rokid credentials (see above):
+1. Clone the repo
+2. Copy `local.properties.template` to `local.properties`
+3. Set your Android SDK path. Optionally add your own Rokid credentials:
 
 ```properties
 sdk.dir=C\:\\Users\\YOU\\AppData\\Local\\Android\\Sdk
@@ -83,51 +87,56 @@ rokid.client.secret=YOUR_CLIENT_SECRET
 rokid.access.key=YOUR_ACCESS_KEY
 ```
 
-**Do not commit `local.properties`** — it is in `.gitignore` and may contain secrets.
+**Don't commit `local.properties`** — it's already in `.gitignore`.
 
-### Build APKs
+### Build
 
 ```bash
-# From project root (e.g. H:\rokid-maps)
-.\gradlew assembleDebug
-# or explicitly:
-.\gradlew :phone:assembleDebug :glasses:assembleDebug
+./gradlew assembleDebug
 ```
 
-Outputs:
-
+APKs end up in:
 - `phone/build/outputs/apk/debug/phone-debug.apk`
 - `glasses/build/outputs/apk/debug/glasses-debug.apk`
 
-### Glasses: Wi‑Fi and audio (optional)
+### Glasses Wi-Fi Permission (Some Devices)
 
-On some devices the glasses app needs permission to toggle Wi‑Fi (for Wi‑Fi Direct from phone):
+If Wi-Fi toggling doesn't work on your glasses, grant this via ADB:
 
 ```bash
 adb shell pm grant com.rokid.hud.glasses android.permission.WRITE_SECURE_SETTINGS
 ```
 
-Re-run after reinstalling the glasses APK if needed.
-
-## Protocol (JSON per line over Bluetooth SPP)
-
-| Type        | Purpose                                          |
-|-------------|---------------------------------------------------|
-| `state`     | lat, lng, bearing, speed, accuracy                 |
-| `route`     | waypoints, totalDistance, totalDuration           |
-| `step`      | instruction, maneuver, distance                   |
-| `settings`  | ttsEnabled, useImperial, useMiniMap               |
-| `wifi_creds`| ssid, passphrase, enabled                         |
-| `tile_req`  | glasses request tile (z, x, y, id)                 |
-| `tile_resp` | phone sends tile data (id, base64)                 |
-| `apk_start` / `apk_chunk` / `apk_end` | phone sends glasses APK in chunks |
-| `notification` | title, text, packageName, timeMs               |
-
 ## Installing
 
-- **Phone**: Install `phone/build/outputs/apk/debug/phone-debug.apk` on your Android phone.
-- **Glasses**: Install `glasses/build/outputs/apk/debug/glasses-debug.apk` via ADB (e.g. `adb install -r glasses-debug.apk`) or use the phone app’s **Update app** to send the APK over Bluetooth and install on the glasses.
+- **Phone** — Install the phone APK like any other Android app.
+- **Glasses** — Either use `adb install -r glasses-debug.apk`, or use the phone app's "Update app" button to send it over Bluetooth.
+
+## The Protocol
+
+Everything goes over Bluetooth SPP as one JSON object per line. Here's what gets sent:
+
+| Message | What It Does |
+|---------|-------------|
+| `state` | GPS position, bearing, speed, accuracy — sent once per second |
+| `route` | Full list of waypoints, total distance and duration |
+| `step` | Current instruction, maneuver type, distance to next turn |
+| `settings` | TTS on/off, imperial/metric, mini map toggle |
+| `wifi_creds` | Hotspot SSID and password for the glasses to connect |
+| `tile_req` / `tile_resp` | Glasses ask for a map tile, phone fetches and returns it |
+| `apk_start` / `apk_chunk` / `apk_end` | Glasses app update sent in chunks from the phone |
+| `notification` | Forwarded phone notification with title, text, and source app |
+
+## What It Uses
+
+All free, all open-source:
+
+- **[OSRM](http://project-osrm.org/)** — Routing engine (no API key)
+- **[Nominatim](https://nominatim.openstreetmap.org/)** — Address search (no API key)
+- **[OpenStreetMap](https://www.openstreetmap.org/)** — Map data (ODbL license)
+- **[CartoDB](https://carto.com/basemaps/)** — Dark Matter tiles (CC BY-SA)
+- **[osmdroid](https://github.com/osmdroid/osmdroid)** — Android map library
 
 ## License
 
-Use and modify as needed. Map data: OpenStreetMap (ODbL). Tiles: CartoDB (CC BY-SA). OSRM and Nominatim are open-source services.
+Use it, modify it, build on it. Map data from OpenStreetMap (ODbL). Tiles from CartoDB (CC BY-SA).
