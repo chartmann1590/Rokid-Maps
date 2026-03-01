@@ -113,7 +113,7 @@ class HudView @JvmOverloads constructor(
         val textTop = mapH + 4f
         drawDirections(canvas, pad, textTop, w - 2 * pad)
         val dirH = 44f
-        drawNotifications(canvas, pad, textTop + dirH, w - 2 * pad, h - textTop - dirH - pad)
+        drawInfoArea(canvas, pad, textTop + dirH, w - 2 * pad, h - textTop - dirH - pad)
     }
 
     // ── Mini bottom (phone toggle): map 25% at bottom, direction+distance at bottom, no notifications ─
@@ -196,7 +196,7 @@ class HudView @JvmOverloads constructor(
         val textW = w - mapW - 20f
         drawDirections(canvas, pad, pad, textW)
         val dirH = 44f
-        drawNotifications(canvas, pad, pad + dirH, textW, h - dirH - 2 * pad)
+        drawInfoArea(canvas, pad, pad + dirH, textW, h - dirH - 2 * pad)
     }
 
     // ── Live tile map with bearing rotation ───────────────────────────────
@@ -349,7 +349,16 @@ class HudView @JvmOverloads constructor(
         canvas.drawLine(left, top + 34f, left + maxWidth, top + 34f, separatorPaint)
     }
 
-    // ── Notifications ─────────────────────────────────────────────────────
+    // ── Notifications / upcoming steps area ──────────────────────────────
+
+    private fun drawInfoArea(canvas: Canvas, left: Float, top: Float, maxWidth: Float, maxHeight: Float) {
+        if (!state.streamNotifications && state.showUpcomingSteps && state.allSteps.isNotEmpty()) {
+            drawUpcomingSteps(canvas, left, top, maxWidth, maxHeight)
+        } else if (state.streamNotifications) {
+            drawNotifications(canvas, left, top, maxWidth, maxHeight)
+        }
+        // If streamNotifications is off and showUpcomingSteps is off, draw nothing
+    }
 
     private fun drawNotifications(canvas: Canvas, left: Float, top: Float, maxWidth: Float, maxHeight: Float) {
         if (state.notifications.isEmpty()) return
@@ -366,6 +375,34 @@ class HudView @JvmOverloads constructor(
             y += lineHeight
             canvas.drawLine(left, y, left + maxWidth, y, separatorPaint)
             y += 4f
+        }
+    }
+
+    private fun drawUpcomingSteps(canvas: Canvas, left: Float, top: Float, maxWidth: Float, maxHeight: Float) {
+        // Show steps after the current one (current step is already in the directions bar)
+        val startIdx = state.currentStepIndex + 1
+        if (startIdx >= state.allSteps.size) return
+
+        val stepPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = hudDimGreen; typeface = Typeface.MONOSPACE; textSize = 14f
+        }
+        val distPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = hudGreen; typeface = Typeface.MONOSPACE; textSize = 13f; textAlign = Paint.Align.RIGHT
+        }
+
+        var y = top + 6f
+        val lineHeight = 24f
+        for (i in startIdx until state.allSteps.size) {
+            if (y + lineHeight > top + maxHeight) break
+            val step = state.allSteps[i]
+            val sym = maneuverToArrow(step.maneuver)
+            val dist = formatDistance(step.distance)
+            val instr = truncateText("$sym ${step.instruction}", stepPaint, maxWidth - 70f)
+            canvas.drawText(instr, left + 2f, y + 14f, stepPaint)
+            canvas.drawText(dist, left + maxWidth - 2f, y + 14f, distPaint)
+            y += lineHeight
+            canvas.drawLine(left, y, left + maxWidth, y, separatorPaint)
+            y += 3f
         }
     }
 
@@ -386,6 +423,17 @@ class HudView @JvmOverloads constructor(
         p.color = if (state.wifiConnected) hudGreen else hudDimGreen
         val wifiLabel = if (state.wifiConnected) "WiFi:ON" else "WiFi:--"
         canvas.drawText(wifiLabel, x, y, p)
+        x += p.measureText(wifiLabel) + 10f
+
+        if (state.batteryLevel >= 0) {
+            p.color = when {
+                state.batteryLevel <= 15 -> Color.parseColor("#FF4444")
+                state.batteryLevel <= 30 -> Color.parseColor("#FFB300")
+                else -> hudGreen
+            }
+            val batLabel = "BAT:${state.batteryLevel}%"
+            canvas.drawText(batLabel, x, y, p)
+        }
     }
 
     // ── Mode indicator ────────────────────────────────────────────────────

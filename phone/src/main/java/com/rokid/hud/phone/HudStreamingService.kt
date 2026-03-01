@@ -138,10 +138,12 @@ class HudStreamingService : Service() {
         navigationManager = NavigationManager(object : NavigationCallback {
             override fun onRouteCalculated(waypoints: List<Waypoint>, totalDistance: Double, totalDuration: Double, steps: List<NavigationStep>) {
                 sendRoute(waypoints, totalDistance, totalDuration)
+                sendStepsList()
                 uiCallback?.onRouteCalculated(waypoints, totalDistance, totalDuration, steps)
             }
             override fun onStepChanged(instruction: String, maneuver: String, distance: Double) {
                 sendStep(instruction, maneuver, distance)
+                sendStepsList()
                 uiCallback?.onStepChanged(instruction, maneuver, distance)
             }
             override fun onNavigationError(message: String) {
@@ -169,8 +171,12 @@ class HudStreamingService : Service() {
 
     fun getLastLocation(): Pair<Double, Double> = Pair(lastLat, lastLng)
 
-    fun sendSettings(ttsEnabled: Boolean, useImperial: Boolean = false, useMiniMap: Boolean = false, miniMapStyle: String = "strip") {
-        val msg = SettingsMessage(ttsEnabled, useImperial, useMiniMap, miniMapStyle)
+    fun sendSettings(
+        ttsEnabled: Boolean, useImperial: Boolean = false,
+        useMiniMap: Boolean = false, miniMapStyle: String = "strip",
+        streamNotifications: Boolean = true, showUpcomingSteps: Boolean = false
+    ) {
+        val msg = SettingsMessage(ttsEnabled, useImperial, useMiniMap, miniMapStyle, streamNotifications, showUpcomingSteps)
         cachedSettings = msg
         broadcast(ProtocolCodec.encodeSettings(msg))
     }
@@ -244,6 +250,13 @@ class HudStreamingService : Service() {
 
     fun sendStep(instruction: String, maneuver: String, distance: Double) {
         broadcast(ProtocolCodec.encodeStep(StepMessage(instruction, maneuver, distance)))
+    }
+
+    fun sendStepsList() {
+        val nav = navigationManager ?: return
+        if (nav.steps.isEmpty()) return
+        val stepInfos = nav.steps.map { StepInfo(it.instruction, it.maneuver, it.distance) }
+        broadcast(ProtocolCodec.encodeStepsList(StepsListMessage(stepInfos, nav.currentStepIndex)))
     }
 
     fun sendRoute(waypoints: List<Waypoint>, totalDistance: Double, totalDuration: Double) {

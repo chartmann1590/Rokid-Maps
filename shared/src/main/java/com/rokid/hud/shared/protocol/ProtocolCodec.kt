@@ -15,6 +15,7 @@ sealed class ParsedMessage {
     data class ApkStart(val msg: ApkStartMessage) : ParsedMessage()
     data class ApkChunk(val msg: ApkChunkMessage) : ParsedMessage()
     data class ApkEnd(val msg: ApkEndMessage) : ParsedMessage()
+    data class StepsList(val msg: StepsListMessage) : ParsedMessage()
     data class Unknown(val raw: String) : ParsedMessage()
 }
 
@@ -64,6 +65,8 @@ object ProtocolCodec {
         put(ProtocolConstants.FIELD_USE_IMPERIAL, msg.useImperial)
         put(ProtocolConstants.FIELD_USE_MINI_MAP, msg.useMiniMap)
         put(ProtocolConstants.FIELD_MINI_MAP_STYLE, msg.miniMapStyle)
+        put(ProtocolConstants.FIELD_STREAM_NOTIFICATIONS, msg.streamNotifications)
+        put(ProtocolConstants.FIELD_SHOW_UPCOMING_STEPS, msg.showUpcomingSteps)
     }.toString()
 
     fun encodeWifiCreds(msg: WifiCredsMessage): String = JSONObject().apply {
@@ -101,6 +104,20 @@ object ProtocolCodec {
 
     fun encodeApkEnd(): String = JSONObject().apply {
         put(ProtocolConstants.FIELD_TYPE, ProtocolConstants.MessageType.APK_END)
+    }.toString()
+
+    fun encodeStepsList(msg: StepsListMessage): String = JSONObject().apply {
+        put(ProtocolConstants.FIELD_TYPE, ProtocolConstants.MessageType.STEPS_LIST)
+        put(ProtocolConstants.FIELD_CURRENT_INDEX, msg.currentIndex)
+        put(ProtocolConstants.FIELD_STEPS, JSONArray().apply {
+            for (s in msg.steps) {
+                put(JSONObject().apply {
+                    put(ProtocolConstants.FIELD_INSTRUCTION, s.instruction)
+                    put(ProtocolConstants.FIELD_MANEUVER, s.maneuver)
+                    put(ProtocolConstants.FIELD_STEP_DISTANCE, s.distance)
+                })
+            }
+        })
     }.toString()
 
     fun decode(line: String): ParsedMessage {
@@ -153,7 +170,9 @@ object ProtocolCodec {
                         ttsEnabled = json.optBoolean(ProtocolConstants.FIELD_TTS_ENABLED, false),
                         useImperial = json.optBoolean(ProtocolConstants.FIELD_USE_IMPERIAL, false),
                         useMiniMap = json.optBoolean(ProtocolConstants.FIELD_USE_MINI_MAP, false),
-                        miniMapStyle = json.optString(ProtocolConstants.FIELD_MINI_MAP_STYLE, "strip")
+                        miniMapStyle = json.optString(ProtocolConstants.FIELD_MINI_MAP_STYLE, "strip"),
+                        streamNotifications = json.optBoolean(ProtocolConstants.FIELD_STREAM_NOTIFICATIONS, true),
+                        showUpcomingSteps = json.optBoolean(ProtocolConstants.FIELD_SHOW_UPCOMING_STEPS, false)
                     )
                 )
                 ProtocolConstants.MessageType.WIFI_CREDS -> ParsedMessage.WifiCreds(
@@ -190,6 +209,21 @@ object ProtocolCodec {
                     )
                 )
                 ProtocolConstants.MessageType.APK_END -> ParsedMessage.ApkEnd(ApkEndMessage())
+                ProtocolConstants.MessageType.STEPS_LIST -> {
+                    val stepsArr = json.getJSONArray(ProtocolConstants.FIELD_STEPS)
+                    val steps = (0 until stepsArr.length()).map { i ->
+                        val s = stepsArr.getJSONObject(i)
+                        StepInfo(
+                            instruction = s.getString(ProtocolConstants.FIELD_INSTRUCTION),
+                            maneuver = s.getString(ProtocolConstants.FIELD_MANEUVER),
+                            distance = s.getDouble(ProtocolConstants.FIELD_STEP_DISTANCE)
+                        )
+                    }
+                    ParsedMessage.StepsList(StepsListMessage(
+                        steps = steps,
+                        currentIndex = json.getInt(ProtocolConstants.FIELD_CURRENT_INDEX)
+                    ))
+                }
                 else -> ParsedMessage.Unknown(line)
             }
         } catch (e: Exception) {

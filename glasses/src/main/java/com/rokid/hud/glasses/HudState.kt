@@ -1,5 +1,6 @@
 package com.rokid.hud.glasses
 
+import com.rokid.hud.shared.protocol.StepInfo
 import com.rokid.hud.shared.protocol.Waypoint
 
 enum class MapLayoutMode {
@@ -34,6 +35,11 @@ data class HudState(
     val layoutMode: MapLayoutMode = MapLayoutMode.FULL_SCREEN,
     val ttsEnabled: Boolean = false,
     val useImperial: Boolean = false,
+    val streamNotifications: Boolean = true,
+    val showUpcomingSteps: Boolean = false,
+    val allSteps: List<StepInfo> = emptyList(),
+    val currentStepIndex: Int = 0,
+    val batteryLevel: Int = -1,
     val btConnected: Boolean = false,
     val wifiConnected: Boolean = false
 ) {

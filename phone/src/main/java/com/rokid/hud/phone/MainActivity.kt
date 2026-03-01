@@ -283,6 +283,7 @@ class MainActivity : AppCompatActivity() {
             getSharedPreferences(PREFS_HUD, MODE_PRIVATE).edit().putBoolean(PREF_SHOW_FULL_ROUTE_STEPS, isChecked).apply()
             navFullStepsPanel.visibility = if (isChecked) View.VISIBLE else View.GONE
             if (isChecked) updateFullStepsList()
+            sendCurrentSettings()
         }
         btnNotifAccess.setOnClickListener { openNotificationListenerSettings() }
 
@@ -310,6 +311,7 @@ class MainActivity : AppCompatActivity() {
 
         switchStreamNotifications.setOnCheckedChangeListener { _, isChecked ->
             getSharedPreferences(PREFS_HUD, MODE_PRIVATE).edit().putBoolean(PREF_STREAM_NOTIFICATIONS, isChecked).apply()
+            sendCurrentSettings()
         }
 
         switchWifiShare.setOnCheckedChangeListener { _, isChecked ->
@@ -784,11 +786,14 @@ class MainActivity : AppCompatActivity() {
 
     private fun sendCurrentSettings() {
         val prefs = getPreferences(MODE_PRIVATE)
+        val hudPrefs = getSharedPreferences(PREFS_HUD, MODE_PRIVATE)
         service?.sendSettings(
             ttsEnabled = prefs.getBoolean(PREF_TTS, false),
             useImperial = prefs.getBoolean(PREF_IMPERIAL, false),
             useMiniMap = prefs.getBoolean(PREF_MINI_MAP, false),
-            miniMapStyle = prefs.getString(PREF_MINI_MAP_STYLE, "strip") ?: "strip"
+            miniMapStyle = prefs.getString(PREF_MINI_MAP_STYLE, "strip") ?: "strip",
+            streamNotifications = hudPrefs.getBoolean(PREF_STREAM_NOTIFICATIONS, true),
+            showUpcomingSteps = hudPrefs.getBoolean(PREF_SHOW_FULL_ROUTE_STEPS, false)
         )
     }
 

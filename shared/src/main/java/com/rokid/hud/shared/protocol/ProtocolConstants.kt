@@ -21,6 +21,10 @@ object ProtocolConstants {
     const val FIELD_USE_IMPERIAL = "useImperial"
     const val FIELD_USE_MINI_MAP = "useMiniMap"
     const val FIELD_MINI_MAP_STYLE = "miniMapStyle"
+    const val FIELD_STREAM_NOTIFICATIONS = "streamNotifs"
+    const val FIELD_SHOW_UPCOMING_STEPS = "showUpcoming"
+    const val FIELD_STEPS = "steps"
+    const val FIELD_CURRENT_INDEX = "curIdx"
     const val FIELD_WIFI_SSID = "wifiSsid"
     const val FIELD_WIFI_PASS = "wifiPass"
     const val FIELD_WIFI_ENABLED = "wifiEnabled"
@@ -45,5 +49,6 @@ object ProtocolConstants {
         const val APK_START = "apk_start"
         const val APK_CHUNK = "apk_chunk"
         const val APK_END = "apk_end"
+        const val STEPS_LIST = "steps_list"
     }
 }

@@ -29,9 +29,11 @@ class NavigationManager(private val callback: NavigationCallback) {
 
     private var destLat = 0.0
     private var destLng = 0.0
-    private var steps: List<NavigationStep> = emptyList()
+    var steps: List<NavigationStep> = emptyList()
+        private set
     private var routeWaypoints: List<Waypoint> = emptyList()
-    private var currentStepIndex = 0
+    var currentStepIndex = 0
+        private set
     private var lastRerouteTime = 0L
 
     val currentInstruction: String

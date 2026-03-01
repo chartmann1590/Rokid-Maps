@@ -36,7 +36,9 @@ data class SettingsMessage(
     val ttsEnabled: Boolean,
     val useImperial: Boolean = false,
     val useMiniMap: Boolean = false,
-    val miniMapStyle: String = "strip"
+    val miniMapStyle: String = "strip",
+    val streamNotifications: Boolean = true,
+    val showUpcomingSteps: Boolean = false
 )
 
 data class WifiCredsMessage(
@@ -48,6 +50,17 @@ data class WifiCredsMessage(
 data class TileRequestMessage(val id: String, val z: Int, val x: Int, val y: Int)
 
 data class TileResponseMessage(val id: String, val data: String?)
+
+data class StepInfo(
+    val instruction: String,
+    val maneuver: String,
+    val distance: Double
+)
+
+data class StepsListMessage(
+    val steps: List<StepInfo>,
+    val currentIndex: Int
+)
 
 data class ApkStartMessage(val totalSize: Long, val totalChunks: Int)
 data class ApkChunkMessage(val index: Int, val data: String)

@@ -1,9 +1,13 @@
 package com.rokid.hud.glasses
 
 import android.Manifest
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.BatteryManager
 import android.os.Build
 import androidx.core.content.FileProvider
 import java.io.File
@@ -34,6 +38,15 @@ class HudActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     private var tts: TextToSpeech? = null
     private var ttsReady = false
     private var lastSpokenInstruction = ""
+
+    private val batteryReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            val level = intent?.getIntExtra(BatteryManager.EXTRA_LEVEL, -1) ?: -1
+            val scale = intent?.getIntExtra(BatteryManager.EXTRA_SCALE, 100) ?: 100
+            val pct = if (scale > 0) (level * 100) / scale else -1
+            hudView.state = hudView.state.copy(batteryLevel = pct)
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -85,10 +98,12 @@ class HudActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         )
         btClient.onTileReceived = { id, data -> tileManager.deliverTile(id, data) }
 
+        registerReceiver(batteryReceiver, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
         requestPermissionsAndStartBt()
     }
 
     override fun onDestroy() {
+        try { unregisterReceiver(batteryReceiver) } catch (_: Exception) {}
         btClient.stop()
         wifiConnector.disconnect()
         tileManager.shutdown()

@@ -179,14 +179,16 @@ class BluetoothClient(
                 )
             }
             is ParsedMessage.Notification -> {
-                currentState = currentState.withNotification(
-                    NotificationItem(
-                        title = parsed.msg.title,
-                        text = parsed.msg.text,
-                        packageName = parsed.msg.packageName,
-                        timeMs = parsed.msg.timeMs
+                if (currentState.streamNotifications) {
+                    currentState = currentState.withNotification(
+                        NotificationItem(
+                            title = parsed.msg.title,
+                            text = parsed.msg.text,
+                            packageName = parsed.msg.packageName,
+                            timeMs = parsed.msg.timeMs
+                        )
                     )
-                )
+                }
             }
             is ParsedMessage.Settings -> {
                 val layoutMode = if (parsed.msg.useMiniMap) {
@@ -198,7 +200,16 @@ class BluetoothClient(
                 currentState = currentState.copy(
                     ttsEnabled = parsed.msg.ttsEnabled,
                     useImperial = parsed.msg.useImperial,
-                    layoutMode = layoutMode
+                    layoutMode = layoutMode,
+                    streamNotifications = parsed.msg.streamNotifications,
+                    showUpcomingSteps = parsed.msg.showUpcomingSteps,
+                    notifications = if (!parsed.msg.streamNotifications) emptyList() else currentState.notifications
+                )
+            }
+            is ParsedMessage.StepsList -> {
+                currentState = currentState.copy(
+                    allSteps = parsed.msg.steps,
+                    currentStepIndex = parsed.msg.currentIndex
                 )
             }
             is ParsedMessage.WifiCreds -> {
