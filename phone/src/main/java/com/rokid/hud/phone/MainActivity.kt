@@ -278,6 +278,12 @@ class MainActivity : AppCompatActivity() {
         btnNavigate.setOnClickListener { startNavigation() }
         btnSavePlace.setOnClickListener { saveCurrentPlace() }
         btnStopNav.setOnClickListener { stopNavigation() }
+        // Let the steps list scroll inside the outer ScrollView
+        navFullStepsList.setOnTouchListener { v, _ ->
+            v.parent.requestDisallowInterceptTouchEvent(true)
+            false
+        }
+
         switchShowFullRouteSteps.isChecked = getSharedPreferences(PREFS_HUD, MODE_PRIVATE).getBoolean(PREF_SHOW_FULL_ROUTE_STEPS, false)
         switchShowFullRouteSteps.setOnCheckedChangeListener { _, isChecked ->
             getSharedPreferences(PREFS_HUD, MODE_PRIVATE).edit().putBoolean(PREF_SHOW_FULL_ROUTE_STEPS, isChecked).apply()
@@ -598,21 +604,6 @@ class MainActivity : AppCompatActivity() {
             "${i + 1}. ${step.instruction} — ${formatDist(step.distance)}"
         }
         navFullStepsList.adapter = ArrayAdapter(this, android.R.layout.simple_list_item_1, items)
-        // Expand ListView height to show all items — outer ScrollView handles scrolling
-        val adapter = navFullStepsList.adapter ?: return
-        var totalH = 0
-        for (i in 0 until adapter.count) {
-            val item = adapter.getView(i, null, navFullStepsList)
-            item.measure(
-                View.MeasureSpec.makeMeasureSpec(navFullStepsList.width, View.MeasureSpec.AT_MOST),
-                View.MeasureSpec.UNSPECIFIED
-            )
-            totalH += item.measuredHeight
-        }
-        totalH += navFullStepsList.dividerHeight * (adapter.count - 1)
-        val params = navFullStepsList.layoutParams
-        params.height = totalH
-        navFullStepsList.layoutParams = params
     }
 
     private fun initNavMap() {
