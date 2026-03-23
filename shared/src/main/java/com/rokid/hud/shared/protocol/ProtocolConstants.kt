@@ -42,6 +42,8 @@ object ProtocolConstants {
     const val FIELD_TILE_CACHE_SIZE_MB = "tileCacheMb"
     const val FIELD_SHOW_SPEED = "showSpd"
     const val FIELD_SHOW_SPEED_LIMIT = "showSpdLim"
+    const val FIELD_GOOGLE_MAPS_MODE = "gmapsMode"
+    const val FIELD_STEP_ICON = "stepIcon"
 
     object MessageType {
         const val STATE = "state"

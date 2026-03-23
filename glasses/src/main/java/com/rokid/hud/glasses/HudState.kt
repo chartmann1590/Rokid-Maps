@@ -31,6 +31,7 @@ data class HudState(
     val instruction: String = "",
     val maneuver: String = "",
     val stepDistance: Double = 0.0,
+    val stepIconData: String? = null,
     val notifications: List<NotificationItem> = emptyList(),
     val layoutMode: MapLayoutMode = MapLayoutMode.FULL_SCREEN,
     val ttsEnabled: Boolean = false,
@@ -48,6 +49,7 @@ data class HudState(
     val tileCacheSizeMb: Int = 100,
     val showSpeed: Boolean = true,
     val showSpeedLimit: Boolean = true,
+    val googleMapsMode: Boolean = false,
     /** When set, shown prominently (e.g. "Rokid Maps is closing") before app exits. */
     val closingMessage: String? = null
 ) {
@@ -61,7 +63,7 @@ data class HudState(
     }
 
     fun toggleLayout(): HudState = copy(
-        layoutMode = when (layoutMode) {
+        layoutMode = if (googleMapsMode) layoutMode else when (layoutMode) {
             MapLayoutMode.FULL_SCREEN -> MapLayoutMode.SMALL_CORNER
             MapLayoutMode.SMALL_CORNER -> MapLayoutMode.FULL_SCREEN
             MapLayoutMode.MINI_BOTTOM -> MapLayoutMode.FULL_SCREEN

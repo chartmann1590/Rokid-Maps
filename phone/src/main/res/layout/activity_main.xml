@@ -709,6 +709,64 @@
                 android:background="#2A2A2A"
                 android:layout_marginTop="12dp" />
 
+            <LinearLayout style="@style/ToggleRow">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Google Maps Mode"
+                        android:textColor="#E0E0E0"
+                        android:textSize="15sp" />
+
+                    <TextView
+                        android:id="@+id/googleMapsModeText"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Use Google Maps turn-by-turn notifications instead of Rokid Maps native routing."
+                        android:textColor="#757575"
+                        android:textSize="12sp"
+                        android:layout_marginTop="2dp" />
+
+                    <TextView
+                        android:id="@+id/googleMapsDebugText"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:background="#181818"
+                        android:padding="10dp"
+                        android:text="No Google Maps notification captured yet"
+                        android:textColor="#9E9E9E"
+                        android:textIsSelectable="true"
+                        android:textSize="11sp"
+                        android:visibility="gone" />
+                </LinearLayout>
+
+                <Button
+                    android:id="@+id/btnGoogleMapsMode"
+                    android:layout_width="wrap_content"
+                    android:layout_height="34dp"
+                    android:minWidth="72dp"
+                    android:text="Off"
+                    android:backgroundTint="#2A2A2A"
+                    android:textColor="#00E676"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp"
+                    android:paddingHorizontal="18dp" />
+            </LinearLayout>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="#2A2A2A" />
+
             <!-- Notification forwarding -->
             <LinearLayout style="@style/ToggleRow">
 

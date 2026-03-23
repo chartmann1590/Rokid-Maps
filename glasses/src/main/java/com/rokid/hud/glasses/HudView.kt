@@ -2,6 +2,7 @@ package com.rokid.hud.glasses
 
 import android.content.Context
 import android.graphics.*
+import android.util.Base64
 import android.util.AttributeSet
 import android.view.GestureDetector
 import android.view.MotionEvent
@@ -92,9 +93,20 @@ class HudView @JvmOverloads constructor(
         color = hudBrightGreen; typeface = Typeface.MONOSPACE; textSize = 28f
         textAlign = Paint.Align.CENTER
     }
+    private val navIconPaint = Paint(Paint.FILTER_BITMAP_FLAG).apply {
+        colorFilter = ColorMatrixColorFilter(ColorMatrix(floatArrayOf(
+            0f, 0f, 0f, 0f, 0f,
+            0.30f, 0.59f, 0.11f, 0f, 0f,
+            0f, 0f, 0f, 0f, 0f,
+            0f, 0f, 0f, 1f, 0f
+        )))
+    }
 
     // Reusable Rect for tile drawing (avoids allocation in draw loop)
     private val tileDestRect = Rect()
+    private val navIconDestRect = RectF()
+    private var cachedStepIconData: String? = null
+    private var cachedStepIconBitmap: Bitmap? = null
 
     var state: HudState = HudState()
         set(value) { field = value; postInvalidate() }
@@ -125,6 +137,12 @@ class HudView @JvmOverloads constructor(
         val h = height.toFloat()
         canvas.drawRect(0f, 0f, w, h, bgPaint)
 
+        if (state.googleMapsMode) {
+            drawGoogleMapsModeLayout(canvas, w, h)
+            state.closingMessage?.let { drawClosingMessage(canvas, w, h, it) }
+            return
+        }
+
         when (state.layoutMode) {
             MapLayoutMode.FULL_SCREEN -> drawFullScreenLayout(canvas, w, h)
             MapLayoutMode.SMALL_CORNER -> drawSmallCornerLayout(canvas, w, h)
@@ -135,6 +153,90 @@ class HudView @JvmOverloads constructor(
         drawModeIndicator(canvas, w)
         drawTurnAlertOverlay(canvas, w, h)
         state.closingMessage?.let { drawClosingMessage(canvas, w, h, it) }
+    }
+
+    private fun drawGoogleMapsModeLayout(canvas: Canvas, w: Float, h: Float) {
+        val centerX = w / 2f
+        val arrowY = h * 0.28f
+        val instructionY = h * 0.52f
+        val distanceY = h * 0.80f
+
+        val arrowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = hudBrightGreen
+            typeface = Typeface.MONOSPACE
+            textAlign = Paint.Align.CENTER
+            textSize = 120f
+        }
+        val instructionPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = hudGreen
+            typeface = Typeface.create(Typeface.MONOSPACE, Typeface.BOLD)
+            textAlign = Paint.Align.CENTER
+            textSize = 28f
+        }
+        val distancePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = hudBrightGreen
+            typeface = Typeface.MONOSPACE
+            textAlign = Paint.Align.CENTER
+            textSize = 40f
+        }
+
+        val maneuver = if (state.maneuver.isBlank()) "straight" else state.maneuver
+        val arrow = maneuverToArrow(maneuver)
+        val instructionLines = if (state.instruction.isBlank()) {
+            listOf("Start Google Maps navigation")
+        } else {
+            wrapText(state.instruction, instructionPaint, w * 0.84f, 3)
+        }
+        val distance = formatDistance(effectiveStepDistance()).ifBlank { "Waiting..." }
+
+        val stepIcon = resolveStepIconBitmap()
+        if (stepIcon != null && !stepIcon.isRecycled) {
+            val maxSize = min(w * 0.34f, h * 0.22f)
+            val scale = min(maxSize / stepIcon.width, maxSize / stepIcon.height)
+            val drawW = stepIcon.width * scale
+            val drawH = stepIcon.height * scale
+            navIconDestRect.set(
+                centerX - drawW / 2f,
+                arrowY - drawH / 2f,
+                centerX + drawW / 2f,
+                arrowY + drawH / 2f
+            )
+            canvas.drawBitmap(stepIcon, null, navIconDestRect, navIconPaint)
+        } else {
+            canvas.drawText(arrow, centerX, arrowY, arrowPaint)
+        }
+
+        val instructionLineHeight = instructionPaint.fontSpacing * 0.92f
+        val instructionBlockHeight = instructionLineHeight * instructionLines.size
+        var lineY = instructionY - instructionBlockHeight / 2f - instructionPaint.ascent() / 2f
+        instructionLines.forEach { line ->
+            canvas.drawText(line, centerX, lineY, instructionPaint)
+            lineY += instructionLineHeight
+        }
+        canvas.drawText(distance, centerX, distanceY, distancePaint)
+    }
+
+    private fun resolveStepIconBitmap(): Bitmap? {
+        val data = state.stepIconData
+        if (data.isNullOrBlank()) {
+            cachedStepIconData = null
+            cachedStepIconBitmap = null
+            return null
+        }
+        if (data == cachedStepIconData && cachedStepIconBitmap != null && !cachedStepIconBitmap!!.isRecycled) {
+            return cachedStepIconBitmap
+        }
+        return try {
+            val bytes = Base64.decode(data, Base64.DEFAULT)
+            val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+            cachedStepIconData = data
+            cachedStepIconBitmap = bitmap
+            bitmap
+        } catch (_: Exception) {
+            cachedStepIconData = null
+            cachedStepIconBitmap = null
+            null
+        }
     }
 
     private fun drawClosingMessage(canvas: Canvas, w: Float, h: Float, message: String) {
@@ -578,8 +680,50 @@ class HudView @JvmOverloads constructor(
         return text.substring(0, end) + "..."
     }
 
+    private fun wrapText(text: String, paint: Paint, maxW: Float, maxLines: Int): List<String> {
+        val normalized = text.trim().replace(Regex("""\s+"""), " ")
+        if (normalized.isBlank()) return listOf("")
+        if (paint.measureText(normalized) <= maxW) return listOf(normalized)
+
+        val words = normalized.split(' ')
+        val lines = mutableListOf<String>()
+        var current = ""
+
+        for ((index, word) in words.withIndex()) {
+            val candidate = if (current.isEmpty()) word else "$current $word"
+            if (paint.measureText(candidate) <= maxW) {
+                current = candidate
+                continue
+            }
+
+            if (current.isNotEmpty()) {
+                lines += current
+            }
+            current = word
+
+            if (lines.size == maxLines - 1) {
+                val remaining = buildString {
+                    append(current)
+                    val nextIndex = index + 1
+                    if (nextIndex < words.size) {
+                        append(' ')
+                        append(words.subList(nextIndex, words.size).joinToString(" "))
+                    }
+                }
+                lines += truncateText(remaining, paint, maxW)
+                return lines
+            }
+        }
+
+        if (current.isNotEmpty()) {
+            lines += current
+        }
+        return lines.take(maxLines)
+    }
+
     private fun formatDistance(meters: Double): String {
-        if (meters < 1) return ""
+        if (meters < 0) return ""
+        if (meters < 1) return "Now"
         return if (state.useImperial) {
             val feet = meters * 3.28084
             val miles = meters / 1609.344
