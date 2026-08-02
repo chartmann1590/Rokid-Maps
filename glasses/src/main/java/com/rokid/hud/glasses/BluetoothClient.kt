@@ -177,7 +177,8 @@ class BluetoothClient(
                 currentState = currentState.copy(
                     instruction = parsed.msg.instruction,
                     maneuver = parsed.msg.maneuver,
-                    stepDistance = parsed.msg.distance
+                    stepDistance = parsed.msg.distance,
+                    stepIconData = parsed.msg.iconData
                 )
             }
             is ParsedMessage.Notification -> {
@@ -209,7 +210,8 @@ class BluetoothClient(
                     showTurnAlert = parsed.msg.showTurnAlert,
                     tileCacheSizeMb = parsed.msg.tileCacheSizeMb,
                     showSpeed = parsed.msg.showSpeed,
-                    showSpeedLimit = parsed.msg.showSpeedLimit
+                    showSpeedLimit = parsed.msg.showSpeedLimit,
+                    googleMapsMode = parsed.msg.googleMapsMode
                 )
             }
             is ParsedMessage.StepsList -> {

@@ -24,7 +24,8 @@ data class RouteMessage(
 data class StepMessage(
     val instruction: String,
     val maneuver: String,
-    val distance: Double
+    val distance: Double,
+    val iconData: String? = null
 )
 
 data class NotificationMessage(
@@ -44,7 +45,8 @@ data class SettingsMessage(
     val showTurnAlert: Boolean = false,
     val tileCacheSizeMb: Int = 100,
     val showSpeed: Boolean = true,
-    val showSpeedLimit: Boolean = true
+    val showSpeedLimit: Boolean = true,
+    val googleMapsMode: Boolean = false
 )
 
 data class WifiCredsMessage(

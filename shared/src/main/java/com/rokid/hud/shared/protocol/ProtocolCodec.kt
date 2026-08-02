@@ -51,6 +51,7 @@ object ProtocolCodec {
         put(ProtocolConstants.FIELD_INSTRUCTION, msg.instruction)
         put(ProtocolConstants.FIELD_MANEUVER, msg.maneuver)
         put(ProtocolConstants.FIELD_STEP_DISTANCE, msg.distance)
+        put(ProtocolConstants.FIELD_STEP_ICON, msg.iconData ?: "")
     }.toString()
 
     fun encodeNotification(msg: NotificationMessage): String = JSONObject().apply {
@@ -73,6 +74,7 @@ object ProtocolCodec {
         put(ProtocolConstants.FIELD_TILE_CACHE_SIZE_MB, msg.tileCacheSizeMb)
         put(ProtocolConstants.FIELD_SHOW_SPEED, msg.showSpeed)
         put(ProtocolConstants.FIELD_SHOW_SPEED_LIMIT, msg.showSpeedLimit)
+        put(ProtocolConstants.FIELD_GOOGLE_MAPS_MODE, msg.googleMapsMode)
     }.toString()
 
     fun encodeWifiCreds(msg: WifiCredsMessage): String = JSONObject().apply {
@@ -162,7 +164,8 @@ object ProtocolCodec {
                     StepMessage(
                         instruction = json.getString(ProtocolConstants.FIELD_INSTRUCTION),
                         maneuver = json.getString(ProtocolConstants.FIELD_MANEUVER),
-                        distance = json.getDouble(ProtocolConstants.FIELD_STEP_DISTANCE)
+                        distance = json.getDouble(ProtocolConstants.FIELD_STEP_DISTANCE),
+                        iconData = json.optString(ProtocolConstants.FIELD_STEP_ICON, null).takeIf { it?.isNotEmpty() == true }
                     )
                 )
                 ProtocolConstants.MessageType.NOTIFICATION -> ParsedMessage.Notification(
@@ -184,7 +187,8 @@ object ProtocolCodec {
                         showTurnAlert = json.optBoolean(ProtocolConstants.FIELD_SHOW_TURN_ALERT, false),
                         tileCacheSizeMb = json.optInt(ProtocolConstants.FIELD_TILE_CACHE_SIZE_MB, 100),
                         showSpeed = json.optBoolean(ProtocolConstants.FIELD_SHOW_SPEED, true),
-                        showSpeedLimit = json.optBoolean(ProtocolConstants.FIELD_SHOW_SPEED_LIMIT, true)
+                        showSpeedLimit = json.optBoolean(ProtocolConstants.FIELD_SHOW_SPEED_LIMIT, true),
+                        googleMapsMode = json.optBoolean(ProtocolConstants.FIELD_GOOGLE_MAPS_MODE, false)
                     )
                 )
                 ProtocolConstants.MessageType.WIFI_CREDS -> ParsedMessage.WifiCreds(

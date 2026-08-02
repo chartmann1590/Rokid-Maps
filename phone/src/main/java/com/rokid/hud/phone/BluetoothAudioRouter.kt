@@ -115,14 +115,14 @@ class BluetoothAudioRouter(private val context: Context) : TextToSpeech.OnInitLi
             when {
                 miles >= 0.1 -> String.format("in %.1f miles", miles)
                 feet >= 50 -> "in ${feet.toInt()} feet"
-                distance > 0 -> "now"
+                distance >= 0 -> "now"
                 else -> ""
             }
         } else {
             when {
                 distance >= 1000 -> String.format("in %.1f kilometers", distance / 1000)
                 distance >= 50 -> "in ${distance.toInt()} meters"
-                distance > 0 -> "now"
+                distance >= 0 -> "now"
                 else -> ""
             }
         }
