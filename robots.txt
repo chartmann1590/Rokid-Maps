@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://chartmann1590.github.io/Rokid-Maps/sitemap.xml
